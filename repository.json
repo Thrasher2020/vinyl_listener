@@ -1,11 +1,5 @@
 {
   "name": "Thrasher2020 Add-ons",
-  "addons": [
-    {
-      "name": "Vinyl Listener",
-      "slug": "vinyl_listener",
-      "description": "Hybrid Vinyl identification using Shazam and ACRCloud.",
-      "url": "https://github.com/Thrasher2020/vinyl_listener"
-    }
-  ]
+  "url": "https://github.com/Thrasher2020/vinyl_listener",
+  "maintainer": "Thrasher2020 <neil@mud-club.com>"
 }
