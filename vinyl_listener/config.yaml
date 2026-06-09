@@ -1,0 +1,23 @@
+name: "Vinyl Listener"
+version: "1.0.0"
+slug: "vinyl_listener"
+description: "Captures audio and publishes Shazam/ACRCloud metadata to MQTT."
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+homeassistant_api: true
+audio: true
+options:
+  mqtt_host: "192.168.1.25"
+  mqtt_user: "mqtt"
+  mqtt_password: "password"
+  acr_access_key: ""
+  acr_access_secret: ""
+schema:
+  mqtt_host: str
+  mqtt_user: str
+  mqtt_password: password
+  acr_access_key: str?
+  acr_access_secret: str?
