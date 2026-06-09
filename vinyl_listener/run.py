@@ -23,11 +23,11 @@ MQTT_PASSWORD = config.get('mqtt_password')
 ACR_KEY = config.get('acr_access_key')
 ACR_SECRET = config.get('acr_access_secret')
 TURNTABLE_ENTITY = config.get('turntable_entity', 'switch.turntable')
+REQUIRED_SILENCE_SEC = config.get('silence_gap_seconds', 2)
 ACR_HOST = "identify-eu-west-1.acrcloud.com"
 
 # --- TUNING PARAMETERS ---
 VOLUME_THRESHOLD = 500  
-REQUIRED_SILENCE_SEC = 2  
 
 # Initialize Clients
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
