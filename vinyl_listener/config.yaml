@@ -1,5 +1,5 @@
 name: "Vinyl Listener"
-version: "1.0.8"
+version: "1.0.9"
 slug: "vinyl_listener"
 description: "Captures audio and publishes Shazam/ACRCloud metadata to MQTT."
 arch:
@@ -16,6 +16,7 @@ options:
   acr_access_key: ""
   acr_access_secret: ""
   turntable_entity: "switch.turntable"
+  silence_gap_seconds: 2
 schema:
   mqtt_host: str
   mqtt_user: str
@@ -23,3 +24,4 @@ schema:
   acr_access_key: str?
   acr_access_secret: str?
   turntable_entity: str
+  silence_gap_seconds: int
