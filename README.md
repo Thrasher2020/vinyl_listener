@@ -9,7 +9,7 @@ Silence Detection: Automatically arms itself after the gap between tracks, preve
 Automatic Album Art: Fetches high-res metadata and artwork via the iTunes API.
 
 Installation
-Add this repository to HACS as a Custom Repository (Add-on type).
+Add this repository to the Repositories in Apps.
 
 Install the add-on.
 
