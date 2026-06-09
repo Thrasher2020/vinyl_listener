@@ -31,6 +31,7 @@ sensor.vinyl_listener_vinyl_title
 
 
 Recommended hardware to interface is a Behringer UCA222 USB Audio Interface
+
 Link : https://www.amazon.co.uk/dp/B0023BYDHK?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1
 
 Add-on will react to a switch - in my instance it's the turntable power. This prevents it from running all the time for no reason.
