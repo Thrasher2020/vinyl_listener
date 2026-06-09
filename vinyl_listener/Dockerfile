@@ -1,9 +1,11 @@
 ARG BUILD_FROM=python:3.11-slim
 FROM $BUILD_FROM
 
-# Install ALSA, ffmpeg for audio processing, and python3
+# Install ALSA, the required PulseAudio bridge plugins, and ffmpeg
 RUN apt-get update && apt-get install -y \
     alsa-utils \
+    libasound2-plugins \
+    libpulse0 \
     ffmpeg \
     python3-pip \
     && rm -rf /var/lib/apt/lists/*
