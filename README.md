@@ -1,5 +1,5 @@
 # Vinyl Listener
-Vinyl Listener for Home Assistant A high-precision vinyl identification add-on.
+Vinyl Listener for Home Assistant A high-precision vinyl identification app.
 
 Features
 Hybrid Identification: Attempts free local identification using Shazam first. Only falls back to ACRCloud if the track is not found, saving you API calls. You get 100 calls a day for the free level of ACRCloud.
