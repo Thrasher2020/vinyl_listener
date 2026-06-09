@@ -1,5 +1,5 @@
 name: "Vinyl Listener"
-version: "1.0.6"
+version: "1.0.7"
 slug: "vinyl_listener"
 description: "Captures audio and publishes Shazam/ACRCloud metadata to MQTT."
 arch:
