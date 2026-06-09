@@ -85,6 +85,7 @@ def is_turntable_on():
     """Checks the state of the user-defined switch via the HA Supervisor API."""
     token = os.environ.get("SUPERVISOR_TOKEN", "").strip()
     if not token:
+        print("⚠️ WARNING: No SUPERVISOR_TOKEN found in environment variables!")
         return False
         
     url = f"http://supervisor/core/api/states/{TURNTABLE_ENTITY}"
@@ -97,8 +98,10 @@ def is_turntable_on():
         response = requests.get(url, headers=headers, timeout=5)
         if response.status_code == 200:
             return response.json().get("state") == "on"
-    except Exception:
-        pass
+        else:
+            print(f"⚠️ API Error: Supervisor responded with status code {response.status_code} for entity {TURNTABLE_ENTITY}")
+    except Exception as e:
+        print(f"⚠️ API Exception: Could not connect to supervisor: {e}")
     return False
 
 def get_local_volume():
@@ -146,7 +149,6 @@ def identify_acrcloud(file_path):
 
 async def identify_hybrid(file_path):
     """Attempts free local Shazam identification first, falls back to ACRCloud if configured."""
-    # 1. Local Shazam Lookup (Free)
     try:
         out = await shazam.recognize(file_path)
         if out and 'track' in out:
@@ -158,7 +160,6 @@ async def identify_hybrid(file_path):
     except Exception:
         pass
 
-    # 2. ACRCloud Fallback (Cloud)
     if ACR_KEY and ACR_SECRET:
         print("Shazam failed, falling back to ACRCloud...")
         out = identify_acrcloud(file_path)
@@ -201,21 +202,32 @@ def main_loop():
     in_track_lock = False
     silence_seconds = 0
     next_retry_time = 0
+    last_turntable_state = None
+    volume_log_counter = 0
     
     while True:
-        # Check turntable state
-        if not is_turntable_on():
-            if in_track_lock:
-                print("Turntable turned off. Resetting track lock.")
+        turntable_on = is_turntable_on()
+        
+        # Log state changes for the switch
+        if turntable_on != last_turntable_state:
+            print(f"🎛️ Turntable switch ({TURNTABLE_ENTITY}) monitored state changed to: {'ON' if turntable_on else 'OFF'}")
+            last_turntable_state = turntable_on
+
+        if not turntable_on:
             in_track_lock = False
             silence_seconds = 0
-            time.sleep(10)
+            time.sleep(5)
             continue
             
         volume = get_local_volume()
         
+        # Every 5 loops (~5 seconds), print the audio level to verify the mic works
+        volume_log_counter += 1
+        if volume_log_counter >= 5:
+            print(f"📊 Audio Level Check -> Current Peak: {volume} (Threshold: {VOLUME_THRESHOLD}) | Locked: {in_track_lock}")
+            volume_log_counter = 0
+        
         if in_track_lock:
-            # Waiting for the physical gap between tracks
             if volume < VOLUME_THRESHOLD:
                 silence_seconds += 1
                 if silence_seconds >= REQUIRED_SILENCE_SEC:
@@ -225,44 +237,41 @@ def main_loop():
             else:
                 silence_seconds = 0
         else:
-            # Armed and looking for music
             if volume >= VOLUME_THRESHOLD:
                 if time.time() < next_retry_time:
+                    time.sleep(1)
                     continue
                     
-                print("Audio threshold crossed! Capturing fingerprint sample...")
+                print("🔊 Audio threshold crossed! Capturing fingerprint sample...")
                 process = subprocess.run([
                     "arecord", "-D", "default", "-d", "8", "-f", "cd", "/tmp/sample.wav"
                 ], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
                 
                 if process.returncode != 0:
+                    print("⚠️ arecord failed to capture audio sample.")
                     continue
                     
-                # Run the hybrid identifier
                 result = asyncio.run(identify_hybrid("/tmp/sample.wav"))
                 
                 if result:
                     art = get_album_art(result['artist'], result['title'])
-                    
                     payload = {
                         "title": result['title'],
                         "artist": result['artist'],
                         "album_art": art
                     }
-                    
                     print(f"🔥 NEW TRACK DETECTED via {result['source']}: {result['artist']} - {result['title']}")
                     client.publish("home/vinyl/now_playing", json.dumps(payload), retain=True)
-                    
-                    # Successfully identified! Lock down until the track ends
                     in_track_lock = True
                     silence_seconds = 0
                 else:
-                    print("Audio detected but no match found. Retrying in 15 seconds.")
+                    print("Audio detected but no metadata match found. cooling down 15s...")
                     next_retry_time = time.time() + 15
                     
-                # Cleanup
                 if os.path.exists('/tmp/sample.wav'):
                     os.remove('/tmp/sample.wav')
+                    
+        time.sleep(1)
 
 if __name__ == "__main__":
     main_loop()
