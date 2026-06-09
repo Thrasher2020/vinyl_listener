@@ -85,7 +85,7 @@ def is_turntable_on():
     """Checks the state of the user-defined switch via the HA Supervisor API."""
     token = os.environ.get("SUPERVISOR_TOKEN", "").strip()
     if not token:
-        print("⚠️ WARNING: No SUPERVISOR_TOKEN found in environment variables!")
+        print("⚠️ WARNING: No SUPERVISOR_TOKEN found!")
         return False
         
     url = f"http://supervisor/core/api/states/{TURNTABLE_ENTITY}"
@@ -98,19 +98,22 @@ def is_turntable_on():
         response = requests.get(url, headers=headers, timeout=5)
         if response.status_code == 200:
             return response.json().get("state") == "on"
-        else:
-            print(f"⚠️ API Error: Supervisor responded with status code {response.status_code} for entity {TURNTABLE_ENTITY}")
-    except Exception as e:
-        print(f"⚠️ API Exception: Could not connect to supervisor: {e}")
+    except Exception:
+        pass
     return False
 
 def get_local_volume():
     """Records 1 second of raw PCM audio and calculates peak amplitude."""
-    # Removed "-D", "default" so it uses the HA-assigned device automatically
+    # CHANGED: Capture stderr to find out exactly why it's returning 0
     process = subprocess.run([
-        "arecord", "-d", "1", "-f", "S16_LE", "-r", "16000", "-t", "raw"
-    ], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        "arecord", "-D", "default", "-d", "1", "-f", "S16_LE", "-r", "16000", "-t", "raw"
+    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
+    if process.returncode != 0:
+        err = process.stderr.decode('utf-8', errors='ignore').strip()
+        print(f"⚠️ Microphone hardware error: {err}")
+        return 0
+        
     data = process.stdout
     if not data:
         return 0
@@ -209,7 +212,6 @@ def main_loop():
     while True:
         turntable_on = is_turntable_on()
         
-        # Log state changes for the switch
         if turntable_on != last_turntable_state:
             print(f"🎛️ Turntable switch ({TURNTABLE_ENTITY}) monitored state changed to: {'ON' if turntable_on else 'OFF'}")
             last_turntable_state = turntable_on
@@ -222,7 +224,6 @@ def main_loop():
             
         volume = get_local_volume()
         
-        # Every 5 loops (~5 seconds), print the audio level to verify the mic works
         volume_log_counter += 1
         if volume_log_counter >= 5:
             print(f"📊 Audio Level Check -> Current Peak: {volume} (Threshold: {VOLUME_THRESHOLD}) | Locked: {in_track_lock}")
@@ -249,7 +250,7 @@ def main_loop():
                 ], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
                 
                 if process.returncode != 0:
-                    print("⚠️ arecord failed to capture audio sample.")
+                    print(f"⚠️ Sample capture failed: {process.stderr.strip()}")
                     continue
                     
                 result = asyncio.run(identify_hybrid("/tmp/sample.wav"))
