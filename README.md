@@ -24,8 +24,11 @@ Optional - Enter your ACRCloud API keys in the add-on configuration tab. (Identi
 Upon launch the add-on will create three sensors : 
 
 sensor.vinyl_listener_vinyl_album_art
+
 sensor.vinyl_listener_vinyl_artist
+
 sensor.vinyl_listener_vinyl_title
+
 
 Recommended hardware to interface is a Behringer UCA222 USB Audio Interface
 Link : https://www.amazon.co.uk/dp/B0023BYDHK?ref=ppx_yo2ov_dt_b_fed_asin_title&th=1
