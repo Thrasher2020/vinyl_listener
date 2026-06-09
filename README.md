@@ -11,7 +11,7 @@ Automatic Album Art: Fetches high-res metadata and artwork via the iTunes API.
 Installation
 Add this repository to the Repositories in Apps.
 
-Install the add-on.
+Install the app.
 
 # Configuration: 
 
