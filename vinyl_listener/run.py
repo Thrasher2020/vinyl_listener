@@ -22,6 +22,7 @@ MQTT_USER = config.get('mqtt_user')
 MQTT_PASSWORD = config.get('mqtt_password')
 ACR_KEY = config.get('acr_access_key')
 ACR_SECRET = config.get('acr_access_secret')
+TURNTABLE_ENTITY = config.get('turntable_entity', 'switch.turntable')
 ACR_HOST = "identify-eu-west-1.acrcloud.com"
 
 # --- TUNING PARAMETERS ---
@@ -81,12 +82,12 @@ def setup_mqtt_discovery():
 setup_mqtt_discovery()
 
 def is_turntable_on():
-    """Checks the state of the switch via the HA Supervisor API."""
+    """Checks the state of the user-defined switch via the HA Supervisor API."""
     token = os.environ.get("SUPERVISOR_TOKEN", "").strip()
     if not token:
         return False
         
-    url = "http://supervisor/core/api/states/switch.turntable"
+    url = f"http://supervisor/core/api/states/{TURNTABLE_ENTITY}"
     headers = {
         "Authorization": f"Bearer {token}",
         "Content-Type": "application/json",
