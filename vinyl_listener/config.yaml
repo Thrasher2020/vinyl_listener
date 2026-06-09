@@ -15,9 +15,11 @@ options:
   mqtt_password: ""
   acr_access_key: ""
   acr_access_secret: ""
+  turntable_entity: "switch.turntable"
 schema:
   mqtt_host: str
   mqtt_user: str
   mqtt_password: password
   acr_access_key: str?
   acr_access_secret: str?
+  turntable_entity: str
