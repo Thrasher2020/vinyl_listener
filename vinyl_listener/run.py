@@ -104,9 +104,8 @@ def is_turntable_on():
 
 def get_local_volume():
     """Records 1 second of raw PCM audio and calculates peak amplitude."""
-    # CHANGED: Capture stderr to find out exactly why it's returning 0
     process = subprocess.run([
-        "arecord", "-D", "default", "-d", "1", "-f", "S16_LE", "-r", "16000", "-t", "raw"
+        "arecord", "-D", "pulse", "-d", "1", "-f", "S16_LE", "-r", "16000", "-t", "raw"
     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
     if process.returncode != 0:
@@ -201,17 +200,17 @@ def get_album_art(artist, title):
     return ""
 
 def main_loop():
-    print("Vinyl Listener hybrid service started. Cooldown: 2s")
+    print("Vinyl Listener hybrid service started. Listening for turntable...")
     
     in_track_lock = False
     silence_seconds = 0
     next_retry_time = 0
     last_turntable_state = None
-    volume_log_counter = 0
     
     while True:
         turntable_on = is_turntable_on()
         
+        # Log state changes for the switch (quiet heartbeat)
         if turntable_on != last_turntable_state:
             print(f"🎛️ Turntable switch ({TURNTABLE_ENTITY}) monitored state changed to: {'ON' if turntable_on else 'OFF'}")
             last_turntable_state = turntable_on
@@ -223,11 +222,6 @@ def main_loop():
             continue
             
         volume = get_local_volume()
-        
-        volume_log_counter += 1
-        if volume_log_counter >= 5:
-            print(f"📊 Audio Level Check -> Current Peak: {volume} (Threshold: {VOLUME_THRESHOLD}) | Locked: {in_track_lock}")
-            volume_log_counter = 0
         
         if in_track_lock:
             if volume < VOLUME_THRESHOLD:
@@ -246,7 +240,7 @@ def main_loop():
                     
                 print("🔊 Audio threshold crossed! Capturing fingerprint sample...")
                 process = subprocess.run([
-                    "arecord", "-D", "default", "-d", "8", "-f", "cd", "/tmp/sample.wav"
+                    "arecord", "-D", "pulse", "-d", "8", "-f", "cd", "/tmp/sample.wav"
                 ], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
                 
                 if process.returncode != 0:
