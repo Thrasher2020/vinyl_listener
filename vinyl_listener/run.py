@@ -106,8 +106,9 @@ def is_turntable_on():
 
 def get_local_volume():
     """Records 1 second of raw PCM audio and calculates peak amplitude."""
+    # Removed "-D", "default" so it uses the HA-assigned device automatically
     process = subprocess.run([
-        "arecord", "-D", "default", "-d", "1", "-f", "S16_LE", "-r", "16000", "-t", "raw"
+        "arecord", "-d", "1", "-f", "S16_LE", "-r", "16000", "-t", "raw"
     ], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     
     data = process.stdout
