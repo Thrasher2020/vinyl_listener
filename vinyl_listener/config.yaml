@@ -18,6 +18,12 @@ options:
   turntable_entity: "switch.turntable"
   silence_gap_seconds: 2
   idle_image_url: "https://example.com/default_idle.png"
+  auto_calibrate: true
+  lastfm_enabled: false
+  lastfm_api_key: ""
+  lastfm_api_secret: ""
+  lastfm_username: ""
+  lastfm_password: ""
 schema:
   mqtt_host: str
   mqtt_user: str
@@ -27,3 +33,9 @@ schema:
   turntable_entity: match(^switch\..+)
   silence_gap_seconds: int
   idle_image_url: str
+  auto_calibrate: bool
+  lastfm_enabled: bool
+  lastfm_api_key: str?
+  lastfm_api_secret: str?
+  lastfm_username: str?
+  lastfm_password: password?
