@@ -24,6 +24,7 @@ ACR_KEY = config.get('acr_access_key')
 ACR_SECRET = config.get('acr_access_secret')
 TURNTABLE_ENTITY = config.get('turntable_entity', 'switch.turntable')
 REQUIRED_SILENCE_SEC = config.get('silence_gap_seconds', 2)
+IDLE_IMAGE = config.get('idle_image_url', '')
 ACR_HOST = "identify-eu-west-1.acrcloud.com"
 
 # --- TUNING PARAMETERS ---
@@ -220,7 +221,7 @@ def main_loop():
                 clear_payload = {
                     "title": "Idle",
                     "artist": "Turntable",
-                    "album_art": ""
+                    "album_art": IDLE_IMAGE
                 }
                 client.publish("home/vinyl/now_playing", json.dumps(clear_payload), retain=True)
 
