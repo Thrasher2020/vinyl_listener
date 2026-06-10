@@ -5,6 +5,13 @@ All notable changes to the Vinyl Listener project will be documented in this fil
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-06-10
+### Added
+- Last.fm integration for automatic track scrobbling.
+- Dynamic auto-calibration feature to sample ambient noise and set the volume threshold automatically when the turntable is turned on.
+### Changed
+- Replaced the hardcoded volume threshold with a dynamic variable managed by the auto-calibration system.
+
 ## [1.1.3] - 2026-06-10
 ### Added
 - Custom idle image for Now Playing.
