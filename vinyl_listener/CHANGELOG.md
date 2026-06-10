@@ -1,0 +1,30 @@
+# Changelog
+
+All notable changes to the Vinyl Listener project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [1.1.2] - 2026-06-10
+### Fixed
+- Resolved an issue where MQTT retained the last track data indefinitely; sensors now wipe to "Idle" when the turntable turns off.
+
+## [1.1.1] - 2026-06-10
+### Added
+- Custom icon and banner logo for the Home Assistant UI.
+
+## [1.0.9] - 2026-06-10
+### Added
+- User-configurable silence gap parameter for track detection.
+### Changed
+- Implemented regex validation for the `turntable_entity` configuration to ensure valid switch domains are used.
+
+## [1.0.6] - 2026-06-10
+### Fixed
+- Added `libasound2-plugins` and forced ALSA to route through the Home Assistant PulseAudio socket, resolving "No such device" microphone hardware errors.
+
+## [1.0.0] - 2026-06-10
+### Added
+- Initial release.
+- Hybrid local Shazam and ACRCloud audio fingerprinting.
+- Auto-discovery payload for automatic MQTT sensor creation in Home Assistant.
