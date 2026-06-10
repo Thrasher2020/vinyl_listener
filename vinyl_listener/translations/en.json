@@ -1,0 +1,60 @@
+{
+  "configuration": {
+    "mqtt_host": {
+      "name": "MQTT Broker IP",
+      "description": "The IP address of your MQTT server."
+    },
+    "mqtt_user": {
+      "name": "MQTT Username",
+      "description": "Username used to authenticate with your MQTT broker."
+    },
+    "mqtt_password": {
+      "name": "MQTT Password",
+      "description": "Password used to authenticate with your MQTT broker."
+    },
+    "acr_access_key": {
+      "name": "ACRCloud Access Key",
+      "description": "Your optional ACRCloud API project access key."
+    },
+    "acr_access_secret": {
+      "name": "ACRCloud Access Secret",
+      "description": "Your optional ACRCloud API project secret key."
+    },
+    "turntable_entity": {
+      "name": "Turntable Switch Entity",
+      "description": "The switch or smart plug that monitors the physical turntable power state."
+    },
+    "silence_gap_seconds": {
+      "name": "Silence Gap (Seconds)",
+      "description": "The duration of silence required to trigger the next track detection loop."
+    },
+    "idle_image_url": {
+      "name": "Idle Artwork URL",
+      "description": "A web URL or local path to the image displayed when the turntable is turned off."
+    },
+    "auto_calibrate": {
+      "name": "Auto Calibrate",
+      "description": "Sample preamp and ambient line noise for 5 seconds upon spin-up to automatically adjust volume thresholds."
+    },
+    "lastfm_enabled": {
+      "name": "Enable Last.fm Scrobbling",
+      "description": "Toggle to automatically push identified tracks to your Last.fm profile history."
+    },
+    "lastfm_api_key": {
+      "name": "Last.fm API Key",
+      "description": "Your Last.fm API application key."
+    },
+    "lastfm_api_secret": {
+      "name": "Last.fm Shared Secret",
+      "description": "Your Last.fm API application shared secret."
+    },
+    "lastfm_username": {
+      "name": "Last.fm Username",
+      "description": "Your personal Last.fm profile username."
+    },
+    "lastfm_password": {
+      "name": "Last.fm Password",
+      "description": "Your personal Last.fm profile password."
+    }
+  }
+}
