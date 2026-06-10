@@ -10,6 +10,7 @@ import requests
 import paho.mqtt.client as mqtt
 import asyncio
 from shazamio import Shazam
+import pylast
 
 # Load config from Home Assistant options
 with open('/data/options.json') as f:
@@ -20,15 +21,21 @@ MQTT_HOST = config.get('mqtt_host')
 MQTT_PORT = 1883
 MQTT_USER = config.get('mqtt_user')
 MQTT_PASSWORD = config.get('mqtt_password')
+
 ACR_KEY = config.get('acr_access_key')
 ACR_SECRET = config.get('acr_access_secret')
+ACR_HOST = "identify-eu-west-1.acrcloud.com"
+
 TURNTABLE_ENTITY = config.get('turntable_entity', 'switch.turntable')
 REQUIRED_SILENCE_SEC = config.get('silence_gap_seconds', 2)
 IDLE_IMAGE = config.get('idle_image_url', '')
-ACR_HOST = "identify-eu-west-1.acrcloud.com"
 
-# --- TUNING PARAMETERS ---
-VOLUME_THRESHOLD = 500  
+# New Features Configuration
+AUTO_CALIBRATE = config.get('auto_calibrate', True)
+LASTFM_ENABLED = config.get('lastfm_enabled', False)
+
+# Initialize global threshold (will be overwritten if auto_calibrate is true)
+global_volume_threshold = 500  
 
 # Initialize Clients
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
@@ -40,7 +47,6 @@ shazam = Shazam()
 def setup_mqtt_discovery():
     """Publishes device and sensor configurations to Home Assistant via MQTT Auto-Discovery."""
     print("Publishing MQTT Auto-Discovery configuration...")
-    
     device_info = {
         "identifiers": ["vinyl_listener_addon"],
         "name": "Vinyl Listener",
@@ -48,53 +54,33 @@ def setup_mqtt_discovery():
         "model": "Hybrid Audio Scrobbler"
     }
 
-    artist_config = {
-        "name": "Vinyl Artist",
-        "unique_id": "vinyl_listener_artist",
-        "state_topic": "home/vinyl/now_playing",
-        "value_template": "{{ value_json.artist }}",
-        "icon": "mdi:account-music",
-        "device": device_info
+    sensors = {
+        "artist": {"name": "Vinyl Artist", "icon": "mdi:account-music", "template": "{{ value_json.artist }}"},
+        "title": {"name": "Vinyl Title", "icon": "mdi:music-circle", "template": "{{ value_json.title }}"},
+        "album_art": {"name": "Vinyl Album Art", "icon": "mdi:image-album", "template": "{{ value_json.album_art }}"}
     }
 
-    title_config = {
-        "name": "Vinyl Title",
-        "unique_id": "vinyl_listener_title",
-        "state_topic": "home/vinyl/now_playing",
-        "value_template": "{{ value_json.title }}",
-        "icon": "mdi:music-circle",
-        "device": device_info
-    }
+    for sensor, details in sensors.items():
+        payload = {
+            "name": details["name"],
+            "unique_id": f"vinyl_listener_{sensor}",
+            "state_topic": "home/vinyl/now_playing",
+            "value_template": details["template"],
+            "icon": details["icon"],
+            "device": device_info
+        }
+        client.publish(f"homeassistant/sensor/vinyl_listener/{sensor}/config", json.dumps(payload), retain=True)
 
-    art_config = {
-        "name": "Vinyl Album Art",
-        "unique_id": "vinyl_listener_art",
-        "state_topic": "home/vinyl/now_playing",
-        "value_template": "{{ value_json.album_art }}",
-        "icon": "mdi:image-album",
-        "device": device_info
-    }
-
-    client.publish("homeassistant/sensor/vinyl_listener/artist/config", json.dumps(artist_config), retain=True)
-    client.publish("homeassistant/sensor/vinyl_listener/title/config", json.dumps(title_config), retain=True)
-    client.publish("homeassistant/sensor/vinyl_listener/album_art/config", json.dumps(art_config), retain=True)
-
-# Run discovery immediately upon startup
 setup_mqtt_discovery()
 
 def is_turntable_on():
-    """Checks the state of the user-defined switch via the HA Supervisor API."""
     token = os.environ.get("SUPERVISOR_TOKEN", "").strip()
     if not token:
-        print("⚠️ WARNING: No SUPERVISOR_TOKEN found!")
         return False
         
     url = f"http://supervisor/core/api/states/{TURNTABLE_ENTITY}"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-        "Host": "supervisor" 
-    }
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json", "Host": "supervisor"}
+    
     try:
         response = requests.get(url, headers=headers, timeout=5)
         if response.status_code == 200:
@@ -104,14 +90,11 @@ def is_turntable_on():
     return False
 
 def get_local_volume():
-    """Records 1 second of raw PCM audio and calculates peak amplitude."""
     process = subprocess.run([
         "arecord", "-D", "pulse", "-d", "1", "-f", "S16_LE", "-r", "16000", "-t", "raw"
     ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
     if process.returncode != 0:
-        err = process.stderr.decode('utf-8', errors='ignore').strip()
-        print(f"⚠️ Microphone hardware error: {err}")
         return 0
         
     data = process.stdout
@@ -120,12 +103,49 @@ def get_local_volume():
         
     count = len(data) // 2
     shorts = struct.unpack(f"{count}h", data)
-    if shorts:
-        return max(abs(x) for x in shorts)
-    return 0
+    return max(abs(x) for x in shorts) if shorts else 0
+
+def calibrate_noise_floor():
+    """Samples the room for 5 seconds to set a dynamic volume threshold."""
+    print("🎧 Auto-calibrating noise floor. Sampling background noise...")
+    peaks = []
+    for _ in range(5):
+        peaks.append(get_local_volume())
+        time.sleep(0.5)
+        
+    avg_peak = sum(peaks) / len(peaks)
+    # Set the threshold slightly above the highest background noise, minimum of 300
+    new_threshold = max(300, int(avg_peak * 2.5))
+    print(f"✅ Calibration complete! Ambient noise average: {int(avg_peak)}. Threshold locked at: {new_threshold}")
+    return new_threshold
+
+def scrobble_track(artist, title):
+    """Sends track data to Last.fm."""
+    if not LASTFM_ENABLED:
+        return
+        
+    api_key = config.get('lastfm_api_key')
+    api_secret = config.get('lastfm_api_secret')
+    username = config.get('lastfm_username')
+    password = config.get('lastfm_password')
+    
+    if not all([api_key, api_secret, username, password]):
+        print("⚠️ Last.fm is enabled, but credentials are missing in the configuration.")
+        return
+
+    try:
+        network = pylast.LastFMNetwork(
+            api_key=api_key,
+            api_secret=api_secret,
+            username=username,
+            password_hash=pylast.md5(password)
+        )
+        network.scrobble(artist=artist, title=title, timestamp=int(time.time()))
+        print("🎶 Successfully scrobbled to Last.fm!")
+    except Exception as e:
+        print(f"⚠️ Failed to scrobble to Last.fm: {e}")
 
 def identify_acrcloud(file_path):
-    """Fallback cloud identification via ACRCloud API."""
     http_method = "POST"
     http_uri = "/v1/identify"
     data_type = "audio"
@@ -137,12 +157,8 @@ def identify_acrcloud(file_path):
 
     files = {'sample': open(file_path, 'rb')}
     data = {
-        'access_key': ACR_KEY,
-        'sample_bytes': os.path.getsize(file_path),
-        'timestamp': timestamp,
-        'signature': sign,
-        'data_type': data_type,
-        "signature_version": signature_version
+        'access_key': ACR_KEY, 'sample_bytes': os.path.getsize(file_path),
+        'timestamp': timestamp, 'signature': sign, 'data_type': data_type, "signature_version": signature_version
     }
     
     try:
@@ -152,15 +168,10 @@ def identify_acrcloud(file_path):
         return None
 
 async def identify_hybrid(file_path):
-    """Attempts free local Shazam identification first, falls back to ACRCloud if configured."""
     try:
         out = await shazam.recognize(file_path)
         if out and 'track' in out:
-            return {
-                'title': out['track']['title'], 
-                'artist': out['track']['subtitle'], 
-                'source': 'Shazam'
-            }
+            return {'title': out['track']['title'], 'artist': out['track']['subtitle'], 'source': 'Shazam'}
     except Exception:
         pass
 
@@ -171,36 +182,25 @@ async def identify_hybrid(file_path):
             metadata = out['metadata']['music'][0]
             title = metadata.get('title', 'Unknown')
             artist = metadata['artists'][0].get('name', 'Unknown') if metadata.get('artists') else 'Unknown'
-            return {
-                'title': title, 
-                'artist': artist, 
-                'source': 'ACRCloud'
-            }
-            
+            return {'title': title, 'artist': artist, 'source': 'ACRCloud'}
     return None
 
 def get_album_art(artist, title):
-    """Fetches high-res album art from the free iTunes Search API."""
     try:
         url = "https://itunes.apple.com/search"
-        params = {
-            "term": f"{artist} {title} Metal",
-            "media": "music",
-            "limit": 5
-        }
+        params = {"term": f"{artist} {title} Metal", "media": "music", "limit": 5}
         r = requests.get(url, params=params, timeout=5)
         data = r.json()
-        
         if data.get('resultCount', 0) > 0:
             for result in data['results']:
                 if artist.lower() in result.get('artistName', '').lower():
-                    low_res_url = result.get('artworkUrl100', '')
-                    return low_res_url.replace('100x100bb', '600x600bb')
+                    return result.get('artworkUrl100', '').replace('100x100bb', '600x600bb')
     except Exception:
         pass
     return ""
 
 def main_loop():
+    global global_volume_threshold
     print("Vinyl Listener hybrid service started. Listening for turntable...")
     
     in_track_lock = False
@@ -211,18 +211,15 @@ def main_loop():
     while True:
         turntable_on = is_turntable_on()
         
-        # Log state changes for the switch (quiet heartbeat)
         if turntable_on != last_turntable_state:
             print(f"🎛️ Turntable switch ({TURNTABLE_ENTITY}) monitored state changed to: {'ON' if turntable_on else 'OFF'}")
             
-            # CLEAR THE SENSORS WHEN TURNING OFF
+            if turntable_on and AUTO_CALIBRATE:
+                global_volume_threshold = calibrate_noise_floor()
+                
             if not turntable_on and last_turntable_state is True:
                 print("🛑 Turntable is OFF. Clearing MQTT track data.")
-                clear_payload = {
-                    "title": "Idle",
-                    "artist": "Turntable",
-                    "album_art": IDLE_IMAGE
-                }
+                clear_payload = {"title": "Idle", "artist": "Turntable", "album_art": IDLE_IMAGE}
                 client.publish("home/vinyl/now_playing", json.dumps(clear_payload), retain=True)
 
             last_turntable_state = turntable_on
@@ -236,7 +233,7 @@ def main_loop():
         volume = get_local_volume()
         
         if in_track_lock:
-            if volume < VOLUME_THRESHOLD:
+            if volume < global_volume_threshold:
                 silence_seconds += 1
                 if silence_seconds >= REQUIRED_SILENCE_SEC:
                     print(f"🎵 Track gap detected ({REQUIRED_SILENCE_SEC}s of silence). Arming for next song.")
@@ -245,31 +242,29 @@ def main_loop():
             else:
                 silence_seconds = 0
         else:
-            if volume >= VOLUME_THRESHOLD:
+            if volume >= global_volume_threshold:
                 if time.time() < next_retry_time:
                     time.sleep(1)
                     continue
                     
                 print("🔊 Audio threshold crossed! Capturing fingerprint sample...")
-                process = subprocess.run([
-                    "arecord", "-D", "pulse", "-d", "8", "-f", "cd", "/tmp/sample.wav"
-                ], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+                process = subprocess.run(["arecord", "-D", "pulse", "-d", "8", "-f", "cd", "/tmp/sample.wav"], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
                 
                 if process.returncode != 0:
-                    print(f"⚠️ Sample capture failed: {process.stderr.strip()}")
                     continue
                     
                 result = asyncio.run(identify_hybrid("/tmp/sample.wav"))
                 
                 if result:
                     art = get_album_art(result['artist'], result['title'])
-                    payload = {
-                        "title": result['title'],
-                        "artist": result['artist'],
-                        "album_art": art
-                    }
+                    payload = {"title": result['title'], "artist": result['artist'], "album_art": art}
+                    
                     print(f"🔥 NEW TRACK DETECTED via {result['source']}: {result['artist']} - {result['title']}")
                     client.publish("home/vinyl/now_playing", json.dumps(payload), retain=True)
+                    
+                    # Fire off the scrobble!
+                    scrobble_track(result['artist'], result['title'])
+                    
                     in_track_lock = True
                     silence_seconds = 0
                 else:
