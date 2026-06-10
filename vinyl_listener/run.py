@@ -213,6 +213,17 @@ def main_loop():
         # Log state changes for the switch (quiet heartbeat)
         if turntable_on != last_turntable_state:
             print(f"🎛️ Turntable switch ({TURNTABLE_ENTITY}) monitored state changed to: {'ON' if turntable_on else 'OFF'}")
+            
+            # CLEAR THE SENSORS WHEN TURNING OFF
+            if not turntable_on and last_turntable_state is True:
+                print("🛑 Turntable is OFF. Clearing MQTT track data.")
+                clear_payload = {
+                    "title": "Idle",
+                    "artist": "Turntable",
+                    "album_art": ""
+                }
+                client.publish("home/vinyl/now_playing", json.dumps(clear_payload), retain=True)
+
             last_turntable_state = turntable_on
 
         if not turntable_on:
