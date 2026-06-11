@@ -186,17 +186,48 @@ async def identify_hybrid(file_path):
     return None
 
 def get_album_art(artist, title):
+    """Fetches album art from iTunes, with a fallback to Last.fm for underground metadata."""
+    # 1. Try iTunes Search API
     try:
         url = "https://itunes.apple.com/search"
         params = {"term": f"{artist} {title} Metal", "media": "music", "limit": 5}
         r = requests.get(url, params=params, timeout=5)
         data = r.json()
+        
         if data.get('resultCount', 0) > 0:
             for result in data['results']:
                 if artist.lower() in result.get('artistName', '').lower():
                     return result.get('artworkUrl100', '').replace('100x100bb', '600x600bb')
     except Exception:
         pass
+
+    # 2. Fallback to Last.fm API if iTunes blanks or misses
+    if LASTFM_KEY:
+        try:
+            print("🔍 iTunes drew a blank on underground metadata. Requesting artwork from Last.fm...")
+            url = "http://ws.audioscrobbler.com/2.0/"
+            params = {
+                "method": "track.getInfo",
+                "api_key": LASTFM_KEY,
+                "artist": artist,
+                "track": title,
+                "format": "json"
+            }
+            r = requests.get(url, params=params, timeout=5)
+            data = r.json()
+            
+            track_data = data.get('track', {})
+            if track_data and 'album' in track_data and track_data['album']:
+                images = track_data['album'].get('image', [])
+                if images:
+                    # Loop backward to grab the highest possible resolution ('mega' or 'extralarge')
+                    for img in reversed(images):
+                        if img.get('#text'):
+                            print("🎨 Successfully matched underground artwork via Last.fm database.")
+                            return img.get('#text')
+        except Exception as e:
+            print(f"⚠️ Last.fm artwork lookup failed: {e}")
+            
     return ""
 
 def main_loop():
