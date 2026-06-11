@@ -33,6 +33,7 @@ IDLE_IMAGE = config.get('idle_image_url', '')
 # New Features Configuration
 AUTO_CALIBRATE = config.get('auto_calibrate', True)
 LASTFM_ENABLED = config.get('lastfm_enabled', False)
+LASTFM_KEY = config.get('lastfm_api_key')
 
 # Initialize global threshold (will be overwritten if auto_calibrate is true)
 global_volume_threshold = 500  
@@ -124,18 +125,17 @@ def scrobble_track(artist, title):
     if not LASTFM_ENABLED:
         return
         
-    api_key = config.get('lastfm_api_key')
     api_secret = config.get('lastfm_api_secret')
     username = config.get('lastfm_username')
     password = config.get('lastfm_password')
     
-    if not all([api_key, api_secret, username, password]):
+    if not all([LASTFM_KEY, api_secret, username, password]):
         print("⚠️ Last.fm is enabled, but credentials are missing in the configuration.")
         return
 
     try:
         network = pylast.LastFMNetwork(
-            api_key=api_key,
+            api_key=LASTFM_KEY,
             api_secret=api_secret,
             username=username,
             password_hash=pylast.md5(password)
@@ -193,7 +193,6 @@ def get_album_art(artist, title):
         params = {"term": f"{artist} {title} Metal", "media": "music", "limit": 5}
         r = requests.get(url, params=params, timeout=5)
         data = r.json()
-        
         if data.get('resultCount', 0) > 0:
             for result in data['results']:
                 if artist.lower() in result.get('artistName', '').lower():
@@ -201,10 +200,10 @@ def get_album_art(artist, title):
     except Exception:
         pass
 
-    # 2. Fallback to Last.fm API if iTunes blanks or misses
+    # 2. Fallback to Last.fm API if iTunes draws a blank or fails
     if LASTFM_KEY:
         try:
-            print("🔍 iTunes drew a blank on underground metadata. Requesting artwork from Last.fm...")
+            print("🔍 iTunes matched nothing. Searching Last.fm API for artwork...")
             url = "http://ws.audioscrobbler.com/2.0/"
             params = {
                 "method": "track.getInfo",
@@ -220,13 +219,13 @@ def get_album_art(artist, title):
             if track_data and 'album' in track_data and track_data['album']:
                 images = track_data['album'].get('image', [])
                 if images:
-                    # Loop backward to grab the highest possible resolution ('mega' or 'extralarge')
+                    # Look backward through the image array to prefer higher resolutions ('mega', 'extralarge')
                     for img in reversed(images):
                         if img.get('#text'):
-                            print("🎨 Successfully matched underground artwork via Last.fm database.")
+                            print("🎨 Successfully retrieved artwork via Last.fm API.")
                             return img.get('#text')
         except Exception as e:
-            print(f"⚠️ Last.fm artwork lookup failed: {e}")
+            print(f"⚠️ Last.fm artwork fallback failed: {e}")
             
     return ""
 
