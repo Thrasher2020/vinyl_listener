@@ -2,7 +2,7 @@
 
 ## [1.2.1] - 2026-06-10
 ### Added
-- Last.FM fallback if album art not found on iTunes.
+- Last.FM fallback if album art not found on iTunes and API key for Last.FM exists.
 
 ## [1.2.1] - 2026-06-10
 ### Added
