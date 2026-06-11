@@ -2,6 +2,10 @@
 
 ## [1.2.1] - 2026-06-10
 ### Added
+- Last.FM fallback if album art not found on iTunes.
+
+## [1.2.1] - 2026-06-10
+### Added
 - English translations
 
 ## [1.2.0] - 2026-06-10
