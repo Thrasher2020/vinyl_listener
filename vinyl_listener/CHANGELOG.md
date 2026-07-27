@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.6] - 2026-07-27
+### Added
+- Added max retries for ACRCloud API for single track.
+
 ## [1.2.5] - 2026-07-27
 ### Added
 - Fix ACRCloud API drain if song not recognised.
