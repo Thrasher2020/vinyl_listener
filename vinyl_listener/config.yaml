@@ -24,6 +24,7 @@ options:
   lastfm_api_secret: ""
   lastfm_username: ""
   lastfm_password: ""
+  max_retries: 3
 schema:
   mqtt_host: str
   mqtt_user: str
@@ -39,3 +40,4 @@ schema:
   lastfm_api_secret: str?
   lastfm_username: str?
   lastfm_password: password?
+  max_retries: int(1,10)
