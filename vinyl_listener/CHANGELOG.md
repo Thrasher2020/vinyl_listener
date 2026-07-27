@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.7] - 2026-07-27
+### Added
+- Configuration cleanup.
+
 ## [1.2.6] - 2026-07-27
 ### Added
 - Added max retries for ACRCloud API for single track.
