@@ -303,8 +303,8 @@ def main_loop():
                     failed_attempts = 0  # Reset on success
                 else:
                     failed_attempts += 1
-                    if failed_attempts >= 3:
-                        print(f"❌ Failed to identify audio 3 times. Locking out until next track to save API credits.")
+                    if failed_attempts >= MAX_RETRIES:
+                        print(f"❌ Failed to identify audio {MAX_RETRIES} times. Locking out until next track to save API credits.")
                         # Publish an unknown state so the dashboard doesn't get stuck on the previous song
                         payload = {"title": "Unknown Track", "artist": "Unknown Artist", "album_art": IDLE_IMAGE}
                         client.publish("home/vinyl/now_playing", json.dumps(payload), retain=True)
@@ -313,7 +313,7 @@ def main_loop():
                         silence_seconds = 0
                         failed_attempts = 0  # Reset for the next track
                     else:
-                        print(f"Audio detected but no metadata match found (Attempt {failed_attempts}/3). Cooling down 15s...")
+                        print(f"Audio detected but no metadata match found (Attempt {failed_attempts}/{MAX_RETRIES}). Cooling down 15s...")
                         next_retry_time = time.time() + 15
                     
                 if os.path.exists('/tmp/sample.wav'):
