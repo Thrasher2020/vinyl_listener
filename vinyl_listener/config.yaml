@@ -15,6 +15,7 @@ options:
   mqtt_password: ""
   acr_access_key: ""
   acr_access_secret: ""
+  max_retries: 3
   turntable_entity: "switch.turntable"
   silence_gap_seconds: 2
   idle_image_url: "https://example.com/default_idle.png"
@@ -24,13 +25,13 @@ options:
   lastfm_api_secret: ""
   lastfm_username: ""
   lastfm_password: ""
-  max_retries: 3
 schema:
   mqtt_host: str
   mqtt_user: str
   mqtt_password: password
   acr_access_key: str?
   acr_access_secret: str?
+  max_retries: int(1,10)
   turntable_entity: match(^switch\..+)
   silence_gap_seconds: int
   idle_image_url: str
@@ -40,4 +41,4 @@ schema:
   lastfm_api_secret: str?
   lastfm_username: str?
   lastfm_password: password?
-  max_retries: int(1,10)
+  
