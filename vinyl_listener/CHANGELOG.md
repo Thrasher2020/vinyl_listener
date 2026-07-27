@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.4] - 2026-07-27
+### Added
+- Logging added.
+
 ## [1.2.2] - 2026-06-11
 ### Added
 - Last.FM fallback if album art not found on iTunes and API key for Last.FM exists.
