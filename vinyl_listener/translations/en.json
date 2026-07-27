@@ -20,6 +20,10 @@
       "name": "ACRCloud Access Secret",
       "description": "Your optional ACRCloud API project secret key."
     },
+    "max_retries": {
+      "name": "ACRCloud Max Retries",
+      "description": "The maximum number of consecutive ACRCloud identification attempts before locking out the track to save daily API credits."
+    },
     "turntable_entity": {
       "name": "Turntable Switch Entity",
       "description": "The switch or smart plug that monitors the physical turntable power state."
