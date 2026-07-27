@@ -178,7 +178,7 @@ async def identify_hybrid(file_path):
     if ACR_KEY and ACR_SECRET:
         print("Shazam failed, falling back to ACRCloud...")
         out = identify_acrcloud(file_path)
-        rint(f"ACRCloud Raw Response: {out}")
+        print(f"ACRCloud Raw Response: {out}")
         if out and out.get('status', {}).get('msg') == 'Success':
             metadata = out['metadata']['music'][0]
             title = metadata.get('title', 'Unknown')
