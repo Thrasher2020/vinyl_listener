@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.5] - 2026-07-27
+### Added
+- Fix ACRCloud API drain if song not recognised.
+
 ## [1.2.4] - 2026-07-27
 ### Added
 - Logging added.
