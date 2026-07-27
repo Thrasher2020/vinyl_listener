@@ -238,6 +238,7 @@ def main_loop():
     silence_seconds = 0
     next_retry_time = 0
     last_turntable_state = None
+    failed_attempts = 0  # NEW: Track consecutive failures
     
     while True:
         turntable_on = is_turntable_on()
@@ -252,6 +253,7 @@ def main_loop():
                 print("🛑 Turntable is OFF. Clearing MQTT track data.")
                 clear_payload = {"title": "Idle", "artist": "Turntable", "album_art": IDLE_IMAGE}
                 client.publish("home/vinyl/now_playing", json.dumps(clear_payload), retain=True)
+                failed_attempts = 0  # Reset on power off
 
             last_turntable_state = turntable_on
 
@@ -298,9 +300,21 @@ def main_loop():
                     
                     in_track_lock = True
                     silence_seconds = 0
+                    failed_attempts = 0  # Reset on success
                 else:
-                    print("Audio detected but no metadata match found. cooling down 15s...")
-                    next_retry_time = time.time() + 15
+                    failed_attempts += 1
+                    if failed_attempts >= 3:
+                        print(f"❌ Failed to identify audio 3 times. Locking out until next track to save API credits.")
+                        # Publish an unknown state so the dashboard doesn't get stuck on the previous song
+                        payload = {"title": "Unknown Track", "artist": "Unknown Artist", "album_art": IDLE_IMAGE}
+                        client.publish("home/vinyl/now_playing", json.dumps(payload), retain=True)
+                        
+                        in_track_lock = True
+                        silence_seconds = 0
+                        failed_attempts = 0  # Reset for the next track
+                    else:
+                        print(f"Audio detected but no metadata match found (Attempt {failed_attempts}/3). Cooling down 15s...")
+                        next_retry_time = time.time() + 15
                     
                 if os.path.exists('/tmp/sample.wav'):
                     os.remove('/tmp/sample.wav')
