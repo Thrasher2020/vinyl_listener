@@ -1,6 +1,10 @@
 # Changelog
 
 ## [1.2.7] - 2026-07-27
+### Fixed
+- Max Retries error
+  
+## [1.2.7] - 2026-07-27
 ### Added
 - Configuration cleanup.
 
