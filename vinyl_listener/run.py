@@ -35,6 +35,7 @@ AUTO_CALIBRATE = config.get('auto_calibrate', True)
 LASTFM_ENABLED = config.get('lastfm_enabled', False)
 LASTFM_KEY = config.get('lastfm_api_key')
 MAX_RETRIES = config.get('max_retries', 3)
+SAMPLE_DELAY = config.get('sample_delay_seconds', 5)
 # Initialize global threshold (will be overwritten if auto_calibrate is true)
 global_volume_threshold = 500  
 
@@ -280,7 +281,12 @@ def main_loop():
                     time.sleep(1)
                     continue
                     
-                print("🔊 Audio threshold crossed! Capturing fingerprint sample...")
+                # NEW: Apply delay only on the very first attempt of a new track
+                if failed_attempts == 0 and SAMPLE_DELAY > 0:
+                    print(f"⏳ Track start detected. Letting the intro play for {SAMPLE_DELAY}s before sampling...")
+                    time.sleep(SAMPLE_DELAY)
+                    
+                print("🔊 Capturing fingerprint sample...")
                 process = subprocess.run(["arecord", "-D", "pulse", "-d", "8", "-f", "cd", "/tmp/sample.wav"], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
                 
                 if process.returncode != 0:
