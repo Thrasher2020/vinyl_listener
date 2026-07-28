@@ -32,6 +32,10 @@
       "name": "Silence Gap (Seconds)",
       "description": "The duration of silence required to trigger the next track detection loop."
     },
+    "sample_delay_seconds": {
+      "name": "Initial Sample Delay (Seconds)",
+      "description": "How long to wait after audio is initially detected before taking the first fingerprint sample. Great for bypassing needle drops or long intros."
+    },
     "idle_image_url": {
       "name": "Idle Artwork URL",
       "description": "A web URL or local path to the image displayed when the turntable is turned off."
