@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.2.7] - 2026-07-27
+## [1.2.9] - 2026-07-27
 ### Added
 = Sample delay added.
 
