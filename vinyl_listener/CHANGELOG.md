@@ -1,14 +1,14 @@
 # Changelog
 
-## [1.3.0] - 2026-07-27
+## [1.3.0] - 2026-07-28
 ### Removed
 = Removed extended ACRCloud logging.
 
-## [1.2.9] - 2026-07-27
+## [1.2.9] - 2026-07-28
 ### Added
 = Sample delay added.
 
-## [1.2.8] - 2026-07-27
+## [1.2.8] - 2026-07-28
 ### Fixed
 - Max Retries error
   
