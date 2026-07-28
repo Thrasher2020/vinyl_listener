@@ -34,7 +34,7 @@ IDLE_IMAGE = config.get('idle_image_url', '')
 AUTO_CALIBRATE = config.get('auto_calibrate', True)
 LASTFM_ENABLED = config.get('lastfm_enabled', False)
 LASTFM_KEY = config.get('lastfm_api_key')
-
+MAX_RETRIES = config.get('max_retries', 3)
 # Initialize global threshold (will be overwritten if auto_calibrate is true)
 global_volume_threshold = 500  
 
