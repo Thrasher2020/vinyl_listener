@@ -17,7 +17,7 @@ options:
   acr_access_secret: ""
   max_retries: 3
   turntable_entity: "switch.turntable"
-  silence_gap_seconds: 2
+  silence_gap_seconds: 2.0
   sample_delay_seconds: 5
   idle_image_url: "https://example.com/default_idle.png"
   auto_calibrate: true
@@ -34,7 +34,7 @@ schema:
   acr_access_secret: str?
   max_retries: int(1,10)
   turntable_entity: match(^switch\..+)
-  silence_gap_seconds: int
+  silence_gap_seconds: float(0.1, 30.0)
   sample_delay_seconds: int(0,30)
   idle_image_url: str
   auto_calibrate: bool
