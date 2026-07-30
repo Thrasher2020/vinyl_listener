@@ -268,7 +268,7 @@ def main_loop():
         
         if in_track_lock:
             if volume < global_volume_threshold:
-                silence_seconds += 1
+                silence_seconds += 0.1
                 if silence_seconds >= REQUIRED_SILENCE_SEC:
                     print(f"🎵 Track gap detected ({REQUIRED_SILENCE_SEC}s of silence). Arming for next song.")
                     in_track_lock = False
@@ -278,7 +278,7 @@ def main_loop():
         else:
             if volume >= global_volume_threshold:
                 if time.time() < next_retry_time:
-                    time.sleep(1)
+                    time.sleep(0.1)
                     continue
                     
                 # NEW: Apply delay only on the very first attempt of a new track
@@ -325,7 +325,7 @@ def main_loop():
                 if os.path.exists('/tmp/sample.wav'):
                     os.remove('/tmp/sample.wav')
                     
-        time.sleep(1)
+        time.sleep(0.1)
 
 if __name__ == "__main__":
     main_loop()
