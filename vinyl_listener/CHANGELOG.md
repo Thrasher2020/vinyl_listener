@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.9] - 2026-07-30
+### Changed
+= Silence seconds now more granular (0.1s) 
+
 ## [1.3.0] - 2026-07-28
 ### Removed
 = Removed extended ACRCloud logging.
