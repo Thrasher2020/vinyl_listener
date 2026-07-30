@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.2.9] - 2026-07-30
+## [1.3.1] - 2026-07-30
 ### Changed
 = Silence seconds now more granular (0.1s) 
 
