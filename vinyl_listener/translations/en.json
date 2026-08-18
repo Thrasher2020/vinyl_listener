@@ -44,6 +44,10 @@
       "name": "Auto Calibrate",
       "description": "Sample preamp and ambient line noise for 5 seconds upon spin-up to automatically adjust volume thresholds."
     },
+    "manual_threshold": {
+      "name": "Manual Volume Threshold",
+      "description": "If Auto Calibrate is disabled, the script uses this fixed volume limit to detect when a song starts (Max: 32000). If Auto Calibrate is enabled, this number is ignored."
+    },
     "lastfm_enabled": {
       "name": "Enable Last.fm Scrobbling",
       "description": "Toggle to automatically push identified tracks to your Last.fm profile history."
