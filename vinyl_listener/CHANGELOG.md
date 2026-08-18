@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.2] - 2026-07-30
+### Added
+= Manual manual volume threshold
+= Ability to trigger auto-caibration
+
 ## [1.3.1] - 2026-07-30
 ### Changed
 = Silence seconds now more granular (0.1s) 
