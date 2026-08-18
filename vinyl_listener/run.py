@@ -43,7 +43,9 @@ global_volume_threshold = MANUAL_THRESHOLD
 # Initialize Clients
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 client.username_pw_set(MQTT_USER, MQTT_PASSWORD)
+client.on_message = on_message
 client.connect(MQTT_HOST, MQTT_PORT, 60)
+client.subscribe("home/vinyl/command/calibrate")
 client.loop_start()
 shazam = Shazam()
 
@@ -73,7 +75,15 @@ def setup_mqtt_discovery():
             "device": device_info
         }
         client.publish(f"homeassistant/sensor/vinyl_listener/{sensor}/config", json.dumps(payload), retain=True)
-
+     
+    button_payload = {
+        "name": "Calibrate Noise Floor",
+        "unique_id": "vinyl_listener_calibrate_btn",
+        "command_topic": "home/vinyl/command/calibrate",
+        "icon": "mdi:tune",
+        "device": device_info
+    }
+    client.publish("homeassistant/button/vinyl_listener/calibrate/config", json.dumps(button_payload), retain=True)
 setup_mqtt_discovery()
 
 def is_turntable_on():
@@ -231,6 +241,13 @@ def get_album_art(artist, title):
             print(f"⚠️ Last.fm artwork fallback failed: {e}")
             
     return ""
+
+def on_message(client, userdata, msg):
+    global global_volume_threshold
+    
+    if msg.topic == "home/vinyl/command/calibrate":
+        print("👆 Manual calibration triggered via Home Assistant!")
+        global_volume_threshold = calibrate_noise_floor()
 
 def main_loop():
     global global_volume_threshold
