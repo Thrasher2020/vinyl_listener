@@ -32,12 +32,13 @@ IDLE_IMAGE = config.get('idle_image_url', '')
 
 # New Features Configuration
 AUTO_CALIBRATE = config.get('auto_calibrate', True)
+MANUAL_THRESHOLD = config.get('manual_threshold', 500)
 LASTFM_ENABLED = config.get('lastfm_enabled', False)
 LASTFM_KEY = config.get('lastfm_api_key')
 MAX_RETRIES = config.get('max_retries', 3)
 SAMPLE_DELAY = config.get('sample_delay_seconds', 5)
 # Initialize global threshold (will be overwritten if auto_calibrate is true)
-global_volume_threshold = 500  
+global_volume_threshold = MANUAL_THRESHOLD
 
 # Initialize Clients
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
