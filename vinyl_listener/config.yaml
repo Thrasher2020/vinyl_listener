@@ -45,4 +45,3 @@ schema:
   lastfm_api_secret: str?
   lastfm_username: str?
   lastfm_password: password?
-  
