@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.3.2] - 2026-07-30
+## [1.3.2] - 2026-08-18
 ### Added
 = Manual manual volume threshold
 = Ability to trigger auto-caibration
