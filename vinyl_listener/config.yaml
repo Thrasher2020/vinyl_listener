@@ -1,47 +1,52 @@
-name: "Vinyl Listener"
-version: "1.3.2"
-slug: "vinyl_listener"
-description: "Captures audio and publishes Shazam/ACRCloud metadata to MQTT."
-arch:
-  - aarch64
-  - amd64
-startup: application
-boot: auto
-homeassistant_api: true
-audio: true
-options:
-  mqtt_host: ""
-  mqtt_user: ""
-  mqtt_password: ""
-  acr_access_key: ""
-  acr_access_secret: ""
-  max_retries: 3
-  turntable_entity: "switch.turntable"
-  silence_gap_seconds: 2.0
-  sample_delay_seconds: 5
-  idle_image_url: "https://example.com/default_idle.png"
-  auto_calibrate: true
-  manual_threshold: 500
-  lastfm_enabled: false
-  lastfm_api_key: ""
-  lastfm_api_secret: ""
-  lastfm_username: ""
-  lastfm_password: ""
-schema:
-  mqtt_host: str
-  mqtt_user: str
-  mqtt_password: password
-  acr_access_key: str?
-  acr_access_secret: str?
-  max_retries: int(1,10)
-  turntable_entity: match(^switch\..+)
-  silence_gap_seconds: float(0.1,30.0)
-  sample_delay_seconds: int(0,30)
-  idle_image_url: str
-  auto_calibrate: bool
-  manual_threshold: int(10,32000)
-  lastfm_enabled: bool
-  lastfm_api_key: str?
-  lastfm_api_secret: str?
-  lastfm_username: str?
-  lastfm_password: password?
+{
+  "name": "Vinyl Listener",
+  "version": "1.3.2",
+  "slug": "vinyl_listener",
+  "description": "Captures audio and publishes Shazam/ACRCloud metadata to MQTT.",
+  "arch": [
+    "aarch64",
+    "amd64"
+  ],
+  "startup": "application",
+  "boot": "auto",
+  "homeassistant_api": true,
+  "audio": true,
+  "options": {
+    "mqtt_host": "",
+    "mqtt_user": "",
+    "mqtt_password": "",
+    "acr_access_key": "",
+    "acr_access_secret": "",
+    "max_retries": 3,
+    "turntable_entity": "switch.turntable",
+    "silence_gap_seconds": 2.0,
+    "sample_delay_seconds": 5,
+    "idle_image_url": "https://example.com/default_idle.png",
+    "auto_calibrate": true,
+    "manual_threshold": 500,
+    "lastfm_enabled": false,
+    "lastfm_api_key": "",
+    "lastfm_api_secret": "",
+    "lastfm_username": "",
+    "lastfm_password": ""
+  },
+  "schema": {
+    "mqtt_host": "str",
+    "mqtt_user": "str",
+    "mqtt_password": "password",
+    "acr_access_key": "str?",
+    "acr_access_secret": "str?",
+    "max_retries": "int(1,10)",
+    "turntable_entity": "match(^switch\\..+)",
+    "silence_gap_seconds": "float(0.1,30.0)",
+    "sample_delay_seconds": "int(0,30)",
+    "idle_image_url": "str",
+    "auto_calibrate": "bool",
+    "manual_threshold": "int(10,32000)",
+    "lastfm_enabled": "bool",
+    "lastfm_api_key": "str?",
+    "lastfm_api_secret": "str?",
+    "lastfm_username": "str?",
+    "lastfm_password": "password?"
+  }
+}
