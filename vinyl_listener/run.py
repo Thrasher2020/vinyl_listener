@@ -37,10 +37,49 @@ LASTFM_ENABLED = config.get('lastfm_enabled', False)
 LASTFM_KEY = config.get('lastfm_api_key')
 MAX_RETRIES = config.get('max_retries', 3)
 SAMPLE_DELAY = config.get('sample_delay_seconds', 5)
+
 # Initialize global threshold (will be overwritten if auto_calibrate is true)
 global_volume_threshold = MANUAL_THRESHOLD
 
-# Initialize Clients
+def get_local_volume():
+    process = subprocess.run([
+        "arecord", "-D", "pulse", "-d", "1", "-f", "S16_LE", "-r", "16000", "-t", "raw"
+    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    
+    if process.returncode != 0:
+        return 0
+        
+    data = process.stdout
+    if not data:
+        return 0
+        
+    count = len(data) // 2
+    shorts = struct.unpack(f"{count}h", data)
+    return max(abs(x) for x in shorts) if shorts else 0
+
+def calibrate_noise_floor():
+    """Samples the room for 5 seconds to set a dynamic volume threshold."""
+    print("🎧 Auto-calibrating noise floor. Sampling background noise...")
+    peaks = []
+    for _ in range(5):
+        peaks.append(get_local_volume())
+        time.sleep(0.5)
+        
+    avg_peak = sum(peaks) / len(peaks)
+    # Set the threshold slightly above the highest background noise, minimum of 300
+    new_threshold = max(300, int(avg_peak * 2.5))
+    print(f"✅ Calibration complete! Ambient noise average: {int(avg_peak)}. Threshold locked at: {new_threshold}")
+    return new_threshold
+
+# 1. DEFINE MQTT MESSAGE CALLBACK FIRST
+def on_message(client, userdata, msg):
+    global global_volume_threshold
+    
+    if msg.topic == "home/vinyl/command/calibrate":
+        print("👆 Manual calibration triggered via Home Assistant!")
+        global_volume_threshold = calibrate_noise_floor()
+
+# 2. INITIALIZE CLIENTS NOW THAT THE FUNCTION EXISTS
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 client.username_pw_set(MQTT_USER, MQTT_PASSWORD)
 client.on_message = on_message
@@ -84,6 +123,7 @@ def setup_mqtt_discovery():
         "device": device_info
     }
     client.publish("homeassistant/button/vinyl_listener/calibrate/config", json.dumps(button_payload), retain=True)
+
 setup_mqtt_discovery()
 
 def is_turntable_on():
@@ -101,36 +141,6 @@ def is_turntable_on():
     except Exception:
         pass
     return False
-
-def get_local_volume():
-    process = subprocess.run([
-        "arecord", "-D", "pulse", "-d", "1", "-f", "S16_LE", "-r", "16000", "-t", "raw"
-    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    
-    if process.returncode != 0:
-        return 0
-        
-    data = process.stdout
-    if not data:
-        return 0
-        
-    count = len(data) // 2
-    shorts = struct.unpack(f"{count}h", data)
-    return max(abs(x) for x in shorts) if shorts else 0
-
-def calibrate_noise_floor():
-    """Samples the room for 5 seconds to set a dynamic volume threshold."""
-    print("🎧 Auto-calibrating noise floor. Sampling background noise...")
-    peaks = []
-    for _ in range(5):
-        peaks.append(get_local_volume())
-        time.sleep(0.5)
-        
-    avg_peak = sum(peaks) / len(peaks)
-    # Set the threshold slightly above the highest background noise, minimum of 300
-    new_threshold = max(300, int(avg_peak * 2.5))
-    print(f"✅ Calibration complete! Ambient noise average: {int(avg_peak)}. Threshold locked at: {new_threshold}")
-    return new_threshold
 
 def scrobble_track(artist, title):
     """Sends track data to Last.fm."""
@@ -190,7 +200,6 @@ async def identify_hybrid(file_path):
     if ACR_KEY and ACR_SECRET:
         print("Shazam failed, falling back to ACRCloud...")
         out = identify_acrcloud(file_path)
-        # print(f"ACRCloud Raw Response: {out}")
         if out and out.get('status', {}).get('msg') == 'Success':
             metadata = out['metadata']['music'][0]
             title = metadata.get('title', 'Unknown')
@@ -241,13 +250,6 @@ def get_album_art(artist, title):
             print(f"⚠️ Last.fm artwork fallback failed: {e}")
             
     return ""
-
-def on_message(client, userdata, msg):
-    global global_volume_threshold
-    
-    if msg.topic == "home/vinyl/command/calibrate":
-        print("👆 Manual calibration triggered via Home Assistant!")
-        global_volume_threshold = calibrate_noise_floor()
 
 def main_loop():
     global global_volume_threshold
