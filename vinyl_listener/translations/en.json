@@ -48,6 +48,10 @@
       "name": "Manual Volume Threshold",
       "description": "If Auto Calibrate is disabled, the script uses this fixed volume limit to detect when a song starts (Max: 32000). If Auto Calibrate is enabled, this number is ignored."
     },
+    "debug_mode": {
+      "name": "Debug Mode (Keep Audio Sample)",
+      "description": "When enabled, saves the last recorded audio sample to your Home Assistant /share folder so you can listen to it. When disabled, uses temporary RAM storage and deletes the file immediately."
+    },
     "lastfm_enabled": {
       "name": "Enable Last.fm Scrobbling",
       "description": "Toggle to automatically push identified tracks to your Last.fm profile history."
