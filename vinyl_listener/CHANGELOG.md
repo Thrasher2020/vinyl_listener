@@ -1,6 +1,10 @@
 # Changelog
 
 ## [1.3.3] - 2026-08-19
+### Changed
+- Code cleanup
+
+## [1.3.3] - 2026-08-19
 ### Added
 - Debug option so you can listen the the samples to ensure they are clean/undistorted
 
