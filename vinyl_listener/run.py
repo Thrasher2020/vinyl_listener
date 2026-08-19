@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import json
 import struct
@@ -7,6 +8,7 @@ import hmac
 import hashlib
 import base64
 import requests
+import signal
 import paho.mqtt.client as mqtt
 import asyncio
 from shazamio import Shazam
@@ -67,7 +69,6 @@ def calibrate_noise_floor():
         time.sleep(0.5)
         
     avg_peak = sum(peaks) / len(peaks)
-    # Set the threshold slightly above the highest background noise, minimum of 300
     new_threshold = max(300, int(avg_peak * 2.5))
     print(f"✅ Calibration complete! Ambient noise average: {int(avg_peak)}. Threshold locked at: {new_threshold}")
     return new_threshold
@@ -210,7 +211,6 @@ async def identify_hybrid(file_path):
 
 def get_album_art(artist, title):
     """Fetches album art from iTunes, with a fallback to Last.fm for underground metadata."""
-    # 1. Try iTunes Search API
     try:
         url = "https://itunes.apple.com/search"
         params = {"term": f"{artist} {title} Metal", "media": "music", "limit": 5}
@@ -223,7 +223,6 @@ def get_album_art(artist, title):
     except Exception:
         pass
 
-    # 2. Fallback to Last.fm API if iTunes draws a blank or fails
     if LASTFM_KEY:
         try:
             print("🔍 iTunes matched nothing. Searching Last.fm API for artwork...")
@@ -242,7 +241,6 @@ def get_album_art(artist, title):
             if track_data and 'album' in track_data and track_data['album']:
                 images = track_data['album'].get('image', [])
                 if images:
-                    # Look backward through the image array to prefer higher resolutions ('mega', 'extralarge')
                     for img in reversed(images):
                         if img.get('#text'):
                             print("🎨 Successfully retrieved artwork via Last.fm API.")
@@ -252,6 +250,17 @@ def get_album_art(artist, title):
             
     return ""
 
+# --- GRACEFUL SHUTDOWN HANDLER ---
+def handle_shutdown(signum, frame):
+    """Traps SIGTERM/SIGINT signals from the Supervisor for a clean exit."""
+    print("\n🛑 SIGTERM received. Shutting down Vinyl Listener gracefully...")
+    try:
+        client.loop_stop()
+        client.disconnect()
+    except Exception:
+        pass
+    sys.exit(0)
+
 def main_loop():
     global global_volume_threshold
     print("Vinyl Listener hybrid service started. Listening for turntable...")
@@ -260,7 +269,7 @@ def main_loop():
     silence_seconds = 0
     next_retry_time = 0
     last_turntable_state = None
-    failed_attempts = 0  # Track consecutive failures
+    failed_attempts = 0
     
     while True:
         turntable_on = is_turntable_on()
@@ -275,7 +284,7 @@ def main_loop():
                 print("🛑 Turntable is OFF. Clearing MQTT track data.")
                 clear_payload = {"title": "Idle", "artist": "Turntable", "album_art": IDLE_IMAGE}
                 client.publish("home/vinyl/now_playing", json.dumps(clear_payload), retain=True)
-                failed_attempts = 0  # Reset on power off
+                failed_attempts = 0
 
             last_turntable_state = turntable_on
 
@@ -302,12 +311,10 @@ def main_loop():
                     time.sleep(0.1)
                     continue
                     
-                # Apply delay only on the very first attempt of a new track
                 if failed_attempts == 0 and SAMPLE_DELAY > 0:
                     print(f"⏳ Track start detected. Letting the intro play for {SAMPLE_DELAY}s before sampling...")
                     time.sleep(SAMPLE_DELAY)
                     
-                # Determine where to save the file based on Debug Mode
                 sample_file = "/share/debug_sample.wav" if DEBUG_MODE else "/tmp/sample.wav"
                 
                 print(f"🔊 Capturing fingerprint sample to {sample_file}...")
@@ -325,32 +332,32 @@ def main_loop():
                     print(f"🔥 NEW TRACK DETECTED via {result['source']}: {result['artist']} - {result['title']}")
                     client.publish("home/vinyl/now_playing", json.dumps(payload), retain=True)
                     
-                    # Fire off the scrobble!
                     scrobble_track(result['artist'], result['title'])
                     
                     in_track_lock = True
                     silence_seconds = 0
-                    failed_attempts = 0  # Reset on success
+                    failed_attempts = 0
                 else:
                     failed_attempts += 1
                     if failed_attempts >= MAX_RETRIES:
                         print(f"❌ Failed to identify audio {MAX_RETRIES} times. Locking out until next track to save API credits.")
-                        # Publish an unknown state so the dashboard doesn't get stuck on the previous song
                         payload = {"title": "Unknown Track", "artist": "Unknown Artist", "album_art": IDLE_IMAGE}
                         client.publish("home/vinyl/now_playing", json.dumps(payload), retain=True)
                         
                         in_track_lock = True
                         silence_seconds = 0
-                        failed_attempts = 0  # Reset for the next track
+                        failed_attempts = 0
                     else:
                         print(f"Audio detected but no metadata match found (Attempt {failed_attempts}/{MAX_RETRIES}). Cooling down 15s...")
                         next_retry_time = time.time() + 15
                     
-                # Clean up the file ONLY if we are not in debug mode
                 if not DEBUG_MODE and os.path.exists(sample_file):
                     os.remove(sample_file)
                     
         time.sleep(0.1)
 
 if __name__ == "__main__":
+    # Wire up the signal handlers before the main loop starts
+    signal.signal(signal.SIGTERM, handle_shutdown)
+    signal.signal(signal.SIGINT, handle_shutdown)
     main_loop()
