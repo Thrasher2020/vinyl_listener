@@ -37,6 +37,7 @@ LASTFM_ENABLED = config.get('lastfm_enabled', False)
 LASTFM_KEY = config.get('lastfm_api_key')
 MAX_RETRIES = config.get('max_retries', 3)
 SAMPLE_DELAY = config.get('sample_delay_seconds', 5)
+DEBUG_MODE = config.get('debug_mode', False)
 
 # Initialize global threshold (will be overwritten if auto_calibrate is true)
 global_volume_threshold = MANUAL_THRESHOLD
@@ -259,7 +260,7 @@ def main_loop():
     silence_seconds = 0
     next_retry_time = 0
     last_turntable_state = None
-    failed_attempts = 0  # NEW: Track consecutive failures
+    failed_attempts = 0  # Track consecutive failures
     
     while True:
         turntable_on = is_turntable_on()
@@ -301,18 +302,21 @@ def main_loop():
                     time.sleep(0.1)
                     continue
                     
-                # NEW: Apply delay only on the very first attempt of a new track
+                # Apply delay only on the very first attempt of a new track
                 if failed_attempts == 0 and SAMPLE_DELAY > 0:
                     print(f"⏳ Track start detected. Letting the intro play for {SAMPLE_DELAY}s before sampling...")
                     time.sleep(SAMPLE_DELAY)
                     
-                print("🔊 Capturing fingerprint sample...")
-                process = subprocess.run(["arecord", "-D", "pulse", "-d", "8", "-f", "cd", "/tmp/sample.wav"], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+                # Determine where to save the file based on Debug Mode
+                sample_file = "/share/debug_sample.wav" if DEBUG_MODE else "/tmp/sample.wav"
+                
+                print(f"🔊 Capturing fingerprint sample to {sample_file}...")
+                process = subprocess.run(["arecord", "-D", "pulse", "-d", "8", "-f", "cd", sample_file], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
                 
                 if process.returncode != 0:
                     continue
                     
-                result = asyncio.run(identify_hybrid("/tmp/sample.wav"))
+                result = asyncio.run(identify_hybrid(sample_file))
                 
                 if result:
                     art = get_album_art(result['artist'], result['title'])
@@ -342,8 +346,9 @@ def main_loop():
                         print(f"Audio detected but no metadata match found (Attempt {failed_attempts}/{MAX_RETRIES}). Cooling down 15s...")
                         next_retry_time = time.time() + 15
                     
-                if os.path.exists('/tmp/sample.wav'):
-                    os.remove('/tmp/sample.wav')
+                # Clean up the file ONLY if we are not in debug mode
+                if not DEBUG_MODE and os.path.exists(sample_file):
+                    os.remove(sample_file)
                     
         time.sleep(0.1)
 
