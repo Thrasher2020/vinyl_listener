@@ -13,6 +13,7 @@ import paho.mqtt.client as mqtt
 import asyncio
 from shazamio import Shazam
 import pylast
+import acoustid
 
 # Load config from Home Assistant options
 with open('/data/options.json') as f:
@@ -24,6 +25,7 @@ MQTT_PORT = 1883
 MQTT_USER = config.get('mqtt_user')
 MQTT_PASSWORD = config.get('mqtt_password')
 
+ACOUSTID_API_KEY = config.get('acoustid_api_key')
 ACR_KEY = config.get('acr_access_key')
 ACR_SECRET = config.get('acr_access_secret')
 ACR_HOST = "identify-eu-west-1.acrcloud.com"
@@ -41,7 +43,7 @@ MAX_RETRIES = config.get('max_retries', 3)
 SAMPLE_DELAY = config.get('sample_delay_seconds', 5)
 DEBUG_MODE = config.get('debug_mode', False)
 
-# Initialize global threshold (will be overwritten if auto_calibrate is true)
+# Initialize global threshold
 global_volume_threshold = MANUAL_THRESHOLD
 
 def get_local_volume():
@@ -81,7 +83,7 @@ def on_message(client, userdata, msg):
         print("👆 Manual calibration triggered via Home Assistant!")
         global_volume_threshold = calibrate_noise_floor()
 
-# 2. INITIALIZE CLIENTS NOW THAT THE FUNCTION EXISTS
+# 2. INITIALIZE CLIENTS
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 client.username_pw_set(MQTT_USER, MQTT_PASSWORD)
 client.on_message = on_message
@@ -169,6 +171,20 @@ def scrobble_track(artist, title):
     except Exception as e:
         print(f"⚠️ Failed to scrobble to Last.fm: {e}")
 
+def identify_acoustid(file_path):
+    if not ACOUSTID_API_KEY:
+        return None
+    try:
+        # acoustid.match yields tuples of (score, recording_id, title, artist)
+        for score, recording_id, title, artist in acoustid.match(ACOUSTID_API_KEY, file_path):
+            if title and artist:
+                return {'title': title, 'artist': artist, 'source': 'AcoustID'}
+    except acoustid.NoBackendError:
+        print("⚠️ AcoustID failed: 'fpcalc' (chromaprint) is not installed in the system.")
+    except Exception as e:
+        print(f"⚠️ AcoustID lookup failed: {e}")
+    return None
+
 def identify_acrcloud(file_path):
     http_method = "POST"
     http_uri = "/v1/identify"
@@ -192,6 +208,7 @@ def identify_acrcloud(file_path):
         return None
 
 async def identify_hybrid(file_path):
+    # 1. Try Local Shazam First (Free)
     try:
         out = await shazam.recognize(file_path)
         if out and 'track' in out:
@@ -199,14 +216,23 @@ async def identify_hybrid(file_path):
     except Exception:
         pass
 
+    # 2. Try AcoustID Second (Free API)
+    if ACOUSTID_API_KEY:
+        print("Shazam failed, falling back to AcoustID...")
+        out = identify_acoustid(file_path)
+        if out:
+            return out
+
+    # 3. Try ACRCloud Last (Paid API Credits)
     if ACR_KEY and ACR_SECRET:
-        print("Shazam failed, falling back to ACRCloud...")
+        print("AcoustID failed, falling back to ACRCloud...")
         out = identify_acrcloud(file_path)
         if out and out.get('status', {}).get('msg') == 'Success':
             metadata = out['metadata']['music'][0]
             title = metadata.get('title', 'Unknown')
             artist = metadata['artists'][0].get('name', 'Unknown') if metadata.get('artists') else 'Unknown'
             return {'title': title, 'artist': artist, 'source': 'ACRCloud'}
+            
     return None
 
 def get_album_art(artist, title):
@@ -357,7 +383,6 @@ def main_loop():
         time.sleep(0.1)
 
 if __name__ == "__main__":
-    # Wire up the signal handlers before the main loop starts
     signal.signal(signal.SIGTERM, handle_shutdown)
     signal.signal(signal.SIGINT, handle_shutdown)
     main_loop()
