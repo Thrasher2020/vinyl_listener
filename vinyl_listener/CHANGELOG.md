@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.4.1] - 2026-08-19
+### Added
+- AcoustID free music match search added.
+
 ## [1.3.3] - 2026-08-19
 ### Changed
 - Code cleanup
