@@ -1,5 +1,5 @@
 name: "Vinyl Listener"
-version: "1.3.2"
+version: "1.3.3"
 slug: "vinyl_listener"
 description: "Captures audio and publishes Shazam/ACRCloud metadata to MQTT."
 arch:
@@ -9,6 +9,8 @@ startup: application
 boot: auto
 homeassistant_api: true
 audio: true
+map:
+  - share:rw
 options:
   mqtt_host: ""
   mqtt_user: ""
@@ -22,6 +24,7 @@ options:
   idle_image_url: "https://example.com/default_idle.png"
   auto_calibrate: true
   manual_threshold: 500
+  debug_mode: false
   lastfm_enabled: false
   lastfm_api_key: ""
   lastfm_api_secret: ""
@@ -40,6 +43,7 @@ schema:
   idle_image_url: str
   auto_calibrate: bool
   manual_threshold: int(10,32000)
+  debug_mode: bool
   lastfm_enabled: bool
   lastfm_api_key: str?
   lastfm_api_secret: str?
