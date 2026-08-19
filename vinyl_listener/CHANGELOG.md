@@ -2,24 +2,24 @@
 
 ## [1.3.3] - 2026-08-19
 ### Added
-= Debug option so you can listen the the samples to ensure they are clean/undistorted
+- Debug option so you can listen the the samples to ensure they are clean/undistorted
 
 ## [1.3.2] - 2026-08-18
 ### Added
-= Manual manual volume threshold
-= Ability to trigger auto-caibration
+- Manual manual volume threshold
+- Ability to trigger auto-caibration
 
 ## [1.3.1] - 2026-07-30
 ### Changed
-= Silence seconds now more granular (0.1s) 
+- Silence seconds now more granular (0.1s) 
 
 ## [1.3.0] - 2026-07-28
 ### Removed
-= Removed extended ACRCloud logging.
+- Removed extended ACRCloud logging.
 
 ## [1.2.9] - 2026-07-28
 ### Added
-= Sample delay added.
+- Sample delay added.
 
 ## [1.2.8] - 2026-07-28
 ### Fixed
