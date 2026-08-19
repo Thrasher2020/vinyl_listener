@@ -2,3 +2,4 @@ requests
 paho-mqtt
 shazamio
 pylast
+pyacoustid
