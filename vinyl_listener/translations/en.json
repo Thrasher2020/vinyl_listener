@@ -52,10 +52,6 @@
       "name": "Debug Mode (Keep Audio Sample)",
       "description": "When enabled, saves the last recorded audio sample to your Home Assistant /share folder so you can listen to it. When disabled, uses temporary RAM storage and deletes the file immediately."
     },
-    "acoustid_api_key": {
-      "name": "AcoustID API Key",
-      "description": "Your free AcoustID client application key. If provided, the script will check AcoustID before burning ACRCloud credits."
-    },
     "lastfm_enabled": {
       "name": "Enable Last.fm Scrobbling",
       "description": "Toggle to automatically push identified tracks to your Last.fm profile history."
