@@ -4,7 +4,7 @@
 ### Added
 - API debug enabled with debug toggle.
 
-## [1.4.1] - 2026-08-19
+## [1.4.2] - 2026-08-19
 ### Changed
 - Code cleanup.
 
