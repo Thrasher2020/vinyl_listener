@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.4.4] - 2026-08-20
+### Removed
+- AcoustID removed.
+
 ## [1.4.3] - 2026-08-20
 ### Added
 - API debug enabled with debug toggle.
