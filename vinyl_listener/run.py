@@ -175,14 +175,25 @@ def identify_acoustid(file_path):
     if not ACOUSTID_API_KEY:
         return None
     try:
-        # acoustid.match yields tuples of (score, recording_id, title, artist)
-        for score, recording_id, title, artist in acoustid.match(ACOUSTID_API_KEY, file_path):
+        if DEBUG_MODE:
+            print("🐛 [DEBUG] Querying AcoustID API...")
+            
+        # Convert the generator to a list so we can log the raw response cleanly
+        results = list(acoustid.match(ACOUSTID_API_KEY, file_path))
+        
+        if DEBUG_MODE:
+            print(f"🐛 [DEBUG] AcoustID Raw Response: {results}")
+            
+        for score, recording_id, title, artist in results:
             if title and artist:
                 return {'title': title, 'artist': artist, 'source': 'AcoustID'}
     except acoustid.NoBackendError:
         print("⚠️ AcoustID failed: 'fpcalc' (chromaprint) is not installed in the system.")
     except Exception as e:
-        print(f"⚠️ AcoustID lookup failed: {e}")
+        if DEBUG_MODE:
+            print(f"🐛 [DEBUG] AcoustID Request Failed: {e}")
+        else:
+            print(f"⚠️ AcoustID lookup failed: {e}")
     return None
 
 def identify_acrcloud(file_path):
@@ -202,30 +213,58 @@ def identify_acrcloud(file_path):
     }
     
     try:
+        if DEBUG_MODE:
+            print("🐛 [DEBUG] Querying ACRCloud API...")
+            
         r = requests.post(f"https://{ACR_HOST}{http_uri}", files=files, data=data, timeout=10)
-        return r.json()
-    except Exception:
+        response_json = r.json()
+        
+        if DEBUG_MODE:
+            print(f"🐛 [DEBUG] ACRCloud Raw Response: {json.dumps(response_json, indent=2)}")
+            
+        return response_json
+    except Exception as e:
+        if DEBUG_MODE:
+            print(f"🐛 [DEBUG] ACRCloud Request Failed: {e}")
         return None
 
 async def identify_hybrid(file_path):
     # 1. Try Local Shazam First (Free)
     try:
+        if DEBUG_MODE:
+            print("🐛 [DEBUG] Querying Shazam API...")
+            
         out = await shazam.recognize(file_path)
+        
+        if DEBUG_MODE:
+            # Shazam responses can be massive, so we print it formatted
+            print(f"🐛 [DEBUG] Shazam Raw Response: {json.dumps(out, indent=2) if out else 'None'}")
+            
         if out and 'track' in out:
             return {'title': out['track']['title'], 'artist': out['track']['subtitle'], 'source': 'Shazam'}
-    except Exception:
+    except Exception as e:
+        if DEBUG_MODE:
+            print(f"🐛 [DEBUG] Shazam Request Failed: {e}")
         pass
 
     # 2. Try AcoustID Second (Free API)
     if ACOUSTID_API_KEY:
-        print("Shazam failed, falling back to AcoustID...")
+        if DEBUG_MODE:
+            print("🐛 [DEBUG] Shazam did not match. Falling back to AcoustID...")
+        else:
+            print("Shazam failed, falling back to AcoustID...")
+            
         out = identify_acoustid(file_path)
         if out:
             return out
 
     # 3. Try ACRCloud Last (Paid API Credits)
     if ACR_KEY and ACR_SECRET:
-        print("AcoustID failed, falling back to ACRCloud...")
+        if DEBUG_MODE:
+            print("🐛 [DEBUG] AcoustID did not match. Falling back to ACRCloud...")
+        else:
+            print("AcoustID failed, falling back to ACRCloud...")
+            
         out = identify_acrcloud(file_path)
         if out and out.get('status', {}).get('msg') == 'Success':
             metadata = out['metadata']['music'][0]
@@ -251,7 +290,11 @@ def get_album_art(artist, title):
 
     if LASTFM_KEY:
         try:
-            print("🔍 iTunes matched nothing. Searching Last.fm API for artwork...")
+            if DEBUG_MODE:
+                print("🐛 [DEBUG] iTunes matched nothing. Searching Last.fm API for artwork...")
+            else:
+                print("🔍 iTunes matched nothing. Searching Last.fm API for artwork...")
+                
             url = "http://ws.audioscrobbler.com/2.0/"
             params = {
                 "method": "track.getInfo",
@@ -272,7 +315,10 @@ def get_album_art(artist, title):
                             print("🎨 Successfully retrieved artwork via Last.fm API.")
                             return img.get('#text')
         except Exception as e:
-            print(f"⚠️ Last.fm artwork fallback failed: {e}")
+            if DEBUG_MODE:
+                print(f"🐛 [DEBUG] Last.fm artwork fallback failed: {e}")
+            else:
+                print(f"⚠️ Last.fm artwork fallback failed: {e}")
             
     return ""
 
