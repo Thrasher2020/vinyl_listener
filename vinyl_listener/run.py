@@ -13,7 +13,6 @@ import paho.mqtt.client as mqtt
 import asyncio
 from shazamio import Shazam
 import pylast
-import acoustid
 
 # Load config from Home Assistant options
 with open('/data/options.json') as f:
@@ -25,7 +24,6 @@ MQTT_PORT = 1883
 MQTT_USER = config.get('mqtt_user')
 MQTT_PASSWORD = config.get('mqtt_password')
 
-ACOUSTID_API_KEY = config.get('acoustid_api_key')
 ACR_KEY = config.get('acr_access_key')
 ACR_SECRET = config.get('acr_access_secret')
 ACR_HOST = "identify-eu-west-1.acrcloud.com"
@@ -171,31 +169,6 @@ def scrobble_track(artist, title):
     except Exception as e:
         print(f"⚠️ Failed to scrobble to Last.fm: {e}")
 
-def identify_acoustid(file_path):
-    if not ACOUSTID_API_KEY:
-        return None
-    try:
-        if DEBUG_MODE:
-            print("🐛 [DEBUG] Querying AcoustID API...")
-            
-        # Convert the generator to a list so we can log the raw response cleanly
-        results = list(acoustid.match(ACOUSTID_API_KEY, file_path))
-        
-        if DEBUG_MODE:
-            print(f"🐛 [DEBUG] AcoustID Raw Response: {results}")
-            
-        for score, recording_id, title, artist in results:
-            if title and artist:
-                return {'title': title, 'artist': artist, 'source': 'AcoustID'}
-    except acoustid.NoBackendError:
-        print("⚠️ AcoustID failed: 'fpcalc' (chromaprint) is not installed in the system.")
-    except Exception as e:
-        if DEBUG_MODE:
-            print(f"🐛 [DEBUG] AcoustID Request Failed: {e}")
-        else:
-            print(f"⚠️ AcoustID lookup failed: {e}")
-    return None
-
 def identify_acrcloud(file_path):
     http_method = "POST"
     http_uri = "/v1/identify"
@@ -237,7 +210,6 @@ async def identify_hybrid(file_path):
         out = await shazam.recognize(file_path)
         
         if DEBUG_MODE:
-            # Shazam responses can be massive, so we print it formatted
             print(f"🐛 [DEBUG] Shazam Raw Response: {json.dumps(out, indent=2) if out else 'None'}")
             
         if out and 'track' in out:
@@ -247,23 +219,12 @@ async def identify_hybrid(file_path):
             print(f"🐛 [DEBUG] Shazam Request Failed: {e}")
         pass
 
-    # 2. Try AcoustID Second (Free API)
-    if ACOUSTID_API_KEY:
-        if DEBUG_MODE:
-            print("🐛 [DEBUG] Shazam did not match. Falling back to AcoustID...")
-        else:
-            print("Shazam failed, falling back to AcoustID...")
-            
-        out = identify_acoustid(file_path)
-        if out:
-            return out
-
-    # 3. Try ACRCloud Last (Paid API Credits)
+    # 2. Try ACRCloud Last (Paid API Credits)
     if ACR_KEY and ACR_SECRET:
         if DEBUG_MODE:
-            print("🐛 [DEBUG] AcoustID did not match. Falling back to ACRCloud...")
+            print("🐛 [DEBUG] Shazam did not match. Falling back to ACRCloud...")
         else:
-            print("AcoustID failed, falling back to ACRCloud...")
+            print("Shazam failed, falling back to ACRCloud...")
             
         out = identify_acrcloud(file_path)
         if out and out.get('status', {}).get('msg') == 'Success':
@@ -390,7 +351,9 @@ def main_loop():
                 sample_file = "/share/debug_sample.wav" if DEBUG_MODE else "/tmp/sample.wav"
                 
                 print(f"🔊 Capturing fingerprint sample to {sample_file}...")
-                process = subprocess.run(["arecord", "-D", "pulse", "-d", "8", "-f", "cd", sample_file], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+                
+                # UPDATED: Capture duration changed from 8 to 12 seconds
+                process = subprocess.run(["arecord", "-D", "pulse", "-d", "12", "-f", "cd", sample_file], stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
                 
                 if process.returncode != 0:
                     continue
