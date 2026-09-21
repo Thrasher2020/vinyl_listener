@@ -41,6 +41,10 @@ MAX_RETRIES = config.get('max_retries', 3)
 SAMPLE_DELAY = config.get('sample_delay_seconds', 5)
 DEBUG_MODE = config.get('debug_mode', False)
 
+SPEED_CORRECTION = config.get('speed_correction', 1.0)
+SPEED_SEARCH = config.get('speed_search', False)
+AUDD_TOKEN = config.get('audd_api_token', '')
+
 # Initialize global threshold
 global_volume_threshold = MANUAL_THRESHOLD
 
@@ -169,6 +173,32 @@ def scrobble_track(artist, title):
     except Exception as e:
         print(f"⚠️ Failed to scrobble to Last.fm: {e}")
 
+SPEED_SEARCH_RATIOS = [0.985, 0.99, 0.995, 1.005, 1.01, 1.015]
+
+def resample_wav(src, dst, factor):
+    rate = int(round(44100 * factor))
+    process = subprocess.run(
+        ["ffmpeg", "-y", "-i", src, "-af", f"asetrate={rate},aresample=44100", dst],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    return process.returncode == 0 and os.path.exists(dst)
+
+def make_speed_variants(src):
+    variants = []
+    for r in SPEED_SEARCH_RATIOS:
+        dst = f"/tmp/speed_{r:.4f}_{os.path.basename(src)}"
+        if resample_wav(src, dst, r):
+            variants.append(dst)
+    return variants
+
+def cleanup_files(paths):
+    for p in paths:
+        try:
+            if p and os.path.exists(p):
+                os.remove(p)
+        except OSError:
+            pass
+
 def identify_acrcloud(file_path):
     http_method = "POST"
     http_uri = "/v1/identify"
@@ -201,38 +231,86 @@ def identify_acrcloud(file_path):
             print(f"🐛 [DEBUG] ACRCloud Request Failed: {e}")
         return None
 
-async def identify_hybrid(file_path):
-    # 1. Try Local Shazam First (Free)
+async def try_shazam(file_path):
     try:
         if DEBUG_MODE:
             print("🐛 [DEBUG] Querying Shazam API...")
-            
+
         out = await shazam.recognize(file_path)
-        
+
         if DEBUG_MODE:
             print(f"🐛 [DEBUG] Shazam Raw Response: {json.dumps(out, indent=2) if out else 'None'}")
-            
+
         if out and 'track' in out:
             return {'title': out['track']['title'], 'artist': out['track']['subtitle'], 'source': 'Shazam'}
     except Exception as e:
         if DEBUG_MODE:
             print(f"🐛 [DEBUG] Shazam Request Failed: {e}")
-        pass
+    return None
 
-    # 2. Try ACRCloud Last (Paid API Credits)
+def identify_audd(file_path):
+    if not AUDD_TOKEN:
+        return None
+
+    try:
+        if DEBUG_MODE:
+            print("🐛 [DEBUG] Querying AudD API...")
+        else:
+            print("Shazam failed, falling back to AudD...")
+
+        with open(file_path, 'rb') as f:
+            r = requests.post(
+                "https://api.audd.io/",
+                data={"api_token": AUDD_TOKEN},
+                files={"file": f},
+                timeout=15,
+            )
+        data = r.json()
+
+        if DEBUG_MODE:
+            print(f"🐛 [DEBUG] AudD Raw Response: {json.dumps(data, indent=2)}")
+
+        if data.get("status") == "success" and data.get("result"):
+            res = data["result"]
+            return {'title': res.get('title', 'Unknown'), 'artist': res.get('artist', 'Unknown'), 'source': 'AudD'}
+    except Exception as e:
+        if DEBUG_MODE:
+            print(f"🐛 [DEBUG] AudD Request Failed: {e}")
+    return None
+
+async def identify_hybrid(file_path):
+    result = await try_shazam(file_path)
+    if result:
+        return result
+
+    if SPEED_SEARCH:
+        print("🔍 Speed search: trying pitch-shifted variants via Shazam...")
+        variants = make_speed_variants(file_path)
+        for variant in variants:
+            result = await try_shazam(variant)
+            if result:
+                print(f"🎯 Speed search matched at {os.path.basename(variant)}")
+                cleanup_files(variants)
+                return result
+        cleanup_files(variants)
+
+    result = identify_audd(file_path)
+    if result:
+        return result
+
     if ACR_KEY and ACR_SECRET:
         if DEBUG_MODE:
-            print("🐛 [DEBUG] Shazam did not match. Falling back to ACRCloud...")
+            print("🐛 [DEBUG] AudD did not match. Falling back to ACRCloud...")
         else:
-            print("Shazam failed, falling back to ACRCloud...")
-            
+            print("AudD failed, falling back to ACRCloud...")
+
         out = identify_acrcloud(file_path)
         if out and out.get('status', {}).get('msg') == 'Success':
             metadata = out['metadata']['music'][0]
             title = metadata.get('title', 'Unknown')
             artist = metadata['artists'][0].get('name', 'Unknown') if metadata.get('artists') else 'Unknown'
             return {'title': title, 'artist': artist, 'source': 'ACRCloud'}
-            
+
     return None
 
 def get_album_art(artist, title):
@@ -358,7 +436,18 @@ def main_loop():
                 if process.returncode != 0:
                     continue
                     
-                result = asyncio.run(identify_hybrid(sample_file))
+                recognition_file = sample_file
+                corrected_file = None
+                if SPEED_CORRECTION != 1.0:
+                    corrected_file = "/share/debug_sample_corrected.wav" if DEBUG_MODE else "/tmp/sample_corrected.wav"
+                    if resample_wav(sample_file, corrected_file, SPEED_CORRECTION):
+                        recognition_file = corrected_file
+                    else:
+                        corrected_file = None
+                        if DEBUG_MODE:
+                            print("🐛 [DEBUG] Speed correction resample failed; using original capture.")
+
+                result = asyncio.run(identify_hybrid(recognition_file))
                 
                 if result:
                     art = get_album_art(result['artist'], result['title'])
@@ -386,8 +475,8 @@ def main_loop():
                         print(f"Audio detected but no metadata match found (Attempt {failed_attempts}/{MAX_RETRIES}). Cooling down 15s...")
                         next_retry_time = time.time() + 15
                     
-                if not DEBUG_MODE and os.path.exists(sample_file):
-                    os.remove(sample_file)
+                if not DEBUG_MODE:
+                    cleanup_files([sample_file, corrected_file])
                     
         time.sleep(0.1)
 

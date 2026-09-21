@@ -1,5 +1,5 @@
 name: "Vinyl Listener"
-version: "1.4.4"
+version: "1.5.0"
 slug: "vinyl_listener"
 description: "Captures audio and publishes Shazam/ACRCloud metadata to MQTT."
 arch:
@@ -21,6 +21,9 @@ options:
   turntable_entity: "switch.turntable"
   silence_gap_seconds: 2.0
   sample_delay_seconds: 5
+  speed_correction: 1.0
+  speed_search: false
+  audd_api_token: ""
   idle_image_url: "https://example.com/default_idle.png"
   auto_calibrate: true
   manual_threshold: 500
@@ -40,6 +43,9 @@ schema:
   turntable_entity: match(^switch\..+)
   silence_gap_seconds: float(0.1,30.0)
   sample_delay_seconds: int(0,30)
+  speed_correction: float(0.5,1.5)
+  speed_search: bool
+  audd_api_token: password?
   idle_image_url: str
   auto_calibrate: bool
   manual_threshold: int(10,32000)

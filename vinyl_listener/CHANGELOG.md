@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.5.0] - 2026-09-21
+### Added
+- Turntable speed correction (resample) to fix pitch-shifted vinyl recognition.
+- Optional speed search that brute-forces pitch variants via Shazam (free).
+- AudD as an additional recognition backend (free tier) before ACRCloud.
+
 ## [1.4.4] - 2026-08-20
 ### Removed
 - AcoustID removed.
