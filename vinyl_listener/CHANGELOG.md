@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.5.1] - 2026-09-22
+### Fixed
+- Auto-calibrate now fires on needle drop (not turntable power-on); added `needle_drop_floor` option.
+
 ## [1.5.0] - 2026-09-21
 ### Added
 - Turntable speed correction (resample) to fix pitch-shifted vinyl recognition.

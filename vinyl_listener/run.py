@@ -35,6 +35,7 @@ IDLE_IMAGE = config.get('idle_image_url', '')
 # New Features Configuration
 AUTO_CALIBRATE = config.get('auto_calibrate', True)
 MANUAL_THRESHOLD = config.get('manual_threshold', 500)
+NEEDLE_DROP_FLOOR = config.get('needle_drop_floor', 300)
 LASTFM_ENABLED = config.get('lastfm_enabled', False)
 LASTFM_KEY = config.get('lastfm_api_key')
 MAX_RETRIES = config.get('max_retries', 3)
@@ -65,16 +66,20 @@ def get_local_volume():
     return max(abs(x) for x in shorts) if shorts else 0
 
 def calibrate_noise_floor():
-    """Samples the room for 5 seconds to set a dynamic volume threshold."""
-    print("🎧 Auto-calibrating noise floor. Sampling background noise...")
-    peaks = []
-    for _ in range(5):
-        peaks.append(get_local_volume())
-        time.sleep(0.5)
-        
-    avg_peak = sum(peaks) / len(peaks)
-    new_threshold = max(300, int(avg_peak * 2.5))
-    print(f"✅ Calibration complete! Ambient noise average: {int(avg_peak)}. Threshold locked at: {new_threshold}")
+    """Samples the lead-in groove right after the needle drops to set the threshold."""
+    print("🎧 Needle drop detected. Calibrating noise floor...")
+    process = subprocess.run(
+        ["arecord", "-D", "pulse", "-d", "1.5", "-f", "S16_LE", "-r", "16000", "-t", "raw"],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if process.returncode != 0 or not process.stdout:
+        return global_volume_threshold
+    data = process.stdout
+    count = len(data) // 2
+    shorts = struct.unpack(f"{count}h", data)
+    levels = sorted(abs(x) for x in shorts)
+    floor = levels[int(len(levels) * 0.95)] if levels else 0
+    new_threshold = max(300, int(floor * 2.5))
+    print(f"✅ Calibration complete! Noise floor: {int(floor)}. Threshold locked at: {new_threshold}")
     return new_threshold
 
 # 1. DEFINE MQTT MESSAGE CALLBACK FIRST
@@ -381,6 +386,7 @@ def main_loop():
     next_retry_time = 0
     last_turntable_state = None
     failed_attempts = 0
+    calibration_pending = False
     
     while True:
         turntable_on = is_turntable_on()
@@ -388,8 +394,8 @@ def main_loop():
         if turntable_on != last_turntable_state:
             print(f"🎛️ Turntable switch ({TURNTABLE_ENTITY}) monitored state changed to: {'ON' if turntable_on else 'OFF'}")
             
-            if turntable_on and AUTO_CALIBRATE:
-                global_volume_threshold = calibrate_noise_floor()
+            if turntable_on:
+                calibration_pending = AUTO_CALIBRATE
                 
             if not turntable_on and last_turntable_state is True:
                 print("🛑 Turntable is OFF. Clearing MQTT track data.")
@@ -406,6 +412,13 @@ def main_loop():
             continue
             
         volume = get_local_volume()
+
+        if calibration_pending:
+            if volume >= NEEDLE_DROP_FLOOR:
+                global_volume_threshold = calibrate_noise_floor()
+                calibration_pending = False
+            time.sleep(0.1)
+            continue
         
         if in_track_lock:
             if volume < global_volume_threshold:

@@ -1,5 +1,5 @@
 name: "Vinyl Listener"
-version: "1.5.0"
+version: "1.5.1"
 slug: "vinyl_listener"
 description: "Captures audio and publishes Shazam/ACRCloud metadata to MQTT."
 arch:
@@ -27,6 +27,7 @@ options:
   idle_image_url: "https://example.com/default_idle.png"
   auto_calibrate: true
   manual_threshold: 500
+  needle_drop_floor: 300
   debug_mode: false
   lastfm_enabled: false
   lastfm_api_key: ""
@@ -49,6 +50,7 @@ schema:
   idle_image_url: str
   auto_calibrate: bool
   manual_threshold: int(10,32000)
+  needle_drop_floor: int(10,32000)
   debug_mode: bool
   lastfm_enabled: bool
   lastfm_api_key: str?
